@@ -18,4 +18,3 @@ node1$edges_out
 
 consonantal <- FeatureDetector("Consonantal")
 vocalic <- FeatureDetector("Vocalic")
-
