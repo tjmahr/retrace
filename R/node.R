@@ -1,31 +1,52 @@
+require("magrittr")
+require("digest")
+require("R6")
 
 
+#' @export
 Node <- R6Class("Node",
   public = list(
     # Fields
     tag = NA,
-    last_input = 0,
-    last_output = 0,
+    activation = 0,
+    tick = 0,
+    history = numeric(0),
+    cache = NA,
+
     edges_in = list(),
     edges_out = list(),
 
     # Constructor
     initialize = function() {
-      # Randomized name to help tell them apart
+      # Randomized name to help tell nodes apart
       self$tag = rnorm(1) %>% digest %>% substr(1, 6)
     },
 
-    add_input = function(n) {
+    attach_input = function(n) {
       self$edges_in %<>% set_tail(n) %>% unique
       invisible(self)
     },
 
-    add_output = function(n) {
+    attach_output = function(n) {
       self$edges_out %<>% set_tail(n) %>% unique
+      invisible(self)
+    },
+
+    receive = function() {
+      self$cache <- self$edges_in %>% visit_sender %>% sum
+      invisible(self)
+    },
+
+    uptick = function() {
+      self$tick %<>% add(1)
+      self$history %<>% append(self$activation)
+      self$activation <- self$cache
+      self$cache <- NA
       invisible(self)
     }
   )
 )
+
 
 #' Append an item onto a list
 set_tail <- function(x, y) {
