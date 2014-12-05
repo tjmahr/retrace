@@ -1,4 +1,5 @@
-trace_parameters <- list(
+#' @export
+trace_params <- list(
   # bottom-up excitation
   excite_feat_phon = .02,
   excite_phon_word = .05,

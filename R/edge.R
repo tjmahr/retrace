@@ -38,7 +38,7 @@ visit <- function(x, direction, f = multiply_by) UseMethod("visit")
 
 visit.Edge <- function(x, direction, f) {
   weight <- x$weight
-  x[[direction]]$activation %>% f(weight)
+  x[[direction]]$send_activation() %>% f(weight)
 }
 
 # Vectorized version: Visit a whole list of Edges.
@@ -50,3 +50,4 @@ visit.list <- function(x, direction, f) {
 visit_sender <- function(x, f = multiply_by) {
   visit(x, direction = "sender", f)
 }
+

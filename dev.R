@@ -6,22 +6,60 @@ library("R6")
 source("R/edge.R")
 source("R/node.R")
 
+# Minimizing the Number of Parameters (p. 21)
+#
+# At the expense of considerable realism, we have tried to keep TRACE II simple
+# by using homogeneous parameters wherever possible. Thus, as already noted, the
+# feature specifications of all phonemes were spread out over the same number of
+# time slices, effectively giving all phonemes the same duration. The strength
+# of the total excitation coming into a particular phoneme unit from the feature
+# units was normalized to the same value for all phonemes, thus making each
+# phoneme equally excitable by its own canonical pattern. Other simplifying
+# assumptions should be noted as well. For example, there were no differences in
+# connections or resting levels for words of dfierent frequency. It would have
+# been a simple matter to incorporate frequency as McClelland and Rumelhart
+# (1981) did, and a complete model would, of course, include some account for
+# the ubiquitous effects of word frequency. We left it out here to facilitate an
+# examination of the many other factors that appear to influence the process of
+# word recognition in speech perception.
 
 
-
-
-def evaluate(self, inputVector):
-  self.lastInput = []
-weightedSum = 0
-
-for e in self.incomingEdges:
-  theInput = e.source.evaluate(inputVector)
-self.lastInput.append(theInput)
-weightedSum += e.weight * theInput
-
-self.lastOutput = activationFunction(weightedSum)
-return self.lastOutput
-
+# Details of Processing Dynamics (pg. 20)
+#
+# The interactive activation process in the Trace model follows the dynamic
+# assumptions laid out in McClelland and Rumelhart (1981). Each unit has a
+# resting activation value arbitrarily set at 0, a maximum activation value
+# arbitrarily set at 1.0, and a minimum activation set at -.3. On every time
+# cycle of processing, all the weighted excitatory and inhibitory signals
+# impinging upon a unit are added together. The signal from one unit to another
+# is just the extent to which its activation exceeds 0; if its activation is
+# less than 0, the signal is 0.* Global level-specific excitatory, inhibitory,
+# and decay parameters scale the relative magnitudes of different types of
+# influences on the activation of each unit. [...]
+#
+# After the net input to each unit has been determined based on the prior
+# activations of the units, the activations of the units are all updated for the
+# next processing cycle. The new value of the activation of the unit is a
+# function of its net input from other units and its previous activation value.
+# The exact function used (see McClelland & Rumelhart, 1981) keeps unit
+# activations bounded between their maximum and minimum values. Given a constant
+# input, the activation of a unit will stabilize at a point between its maximum
+# and minimum that depends on the strength and sign (excitatory or inhibitory)
+# of the input.
+#
+# With a net input of 0, the activation of the unit will gradually return to its
+# resting level. Each processing time cycle corresponds to a single time slice
+# at the feature level. This is actually a parameter of the model-there is no
+# intrinsic reason why there should be a single cycle of the interactive
+# activation process synchronized with the arrival of each successive slice of
+# the input. A higher rate of cycling would speed the percolation of effects of
+# new input through the network relative to the rate of presentation.
+#
+# *At the word level, the inhibitory signal from one word to another is just the
+# square of the extent to which the sender’s activation exceeds zero. This tends
+# to smooth the effects of many units suddenly becoming slightly activated, and
+# of course it also increases the dominance of one active word over many weakly
+# activated ones.
 
 
 
@@ -36,6 +74,16 @@ bias$uptick()
 
 
 node1 <- Node$new()
+node1$activation <- .1
+node1$send_activation()
+node1$receive()
+node1$uptick()
+node1$compute_activation()
+
+
+trace_params$decay_feat <- .2
+FeatureNode$new("Consonantal", 8)
+
 node2 <- Node$new()
 node3 <- Node$new()
 node4 <- Node$new()
@@ -89,41 +137,5 @@ node1$edges_out
 
 consonantal <- FeatureDetector("Consonantal")
 vocalic <- FeatureDetector("Vocalic")
-
-class Network:
-  def __init__(self):
-  self.inputNodes = []
-self.outputNode = None
-
-class InputNode(Node):
-  def __init__(self, index):
-  Node.__init__(self)
-self.index = index; # the index of the input vector corresponding to this node
-
-class Network:
-  ...
-
-def evaluate(self, inputVector):
-  return self.outputNode.evaluate(inputVector)
-
-class Node:
-  ...
-
-
-
-class InputNode(Node):
-  ...
-
-def evaluate(self, inputVector):
-  self.lastOutput = inputVector[self.index]
-return self.lastOutput
-
-
-class BiasNode(InputNode):
-  def __init__(self):
-  Node.__init__(self)
-
-def evaluate(self, inputVector):
-  return 1.0
 
 

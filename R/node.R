@@ -2,24 +2,39 @@ require("magrittr")
 require("digest")
 require("R6")
 
+act = 1
+net = -1
+min = -.3
+max = 1
+decay = 0.1
+rest = 0
 
 #' @export
 Node <- R6Class("Node",
   public = list(
-    # Fields
+    # Structural fields
     tag = NA,
-    activation = 0,
-    tick = 0,
-    history = numeric(0),
-    cache = NA,
-
     edges_in = list(),
     edges_out = list(),
+
+    # Activation parameters
+    act_min = -.3,
+    act_max = 1,
+    act_rest = 0,
+    act_decay = 0,
+
+    # Activation and clock values
+    activation = numeric(0),
+    history = numeric(0),
+    tick = 0,
+    cache = 0,
+
 
     # Constructor
     initialize = function() {
       # Randomized name to help tell nodes apart
-      self$tag = rnorm(1) %>% digest %>% substr(1, 6)
+      self$activation <- self$act_rest
+      self$tag <- rnorm(1) %>% digest %>% substr(1, 6)
     },
 
     attach_input = function(n) {
@@ -32,16 +47,32 @@ Node <- R6Class("Node",
       invisible(self)
     },
 
+    send_activation = function() {
+      # Activation is sent only if greater than 0.
+      signal <- ifelse(self$activation < 0, 0, self$activation)
+      signal
+    },
+
     receive = function() {
       self$cache <- self$edges_in %>% visit_sender %>% sum
       invisible(self)
     },
 
+    # Rum and McCl activation function
+    compute_activation = function() {
+      act <- self$activation
+      dist_to_edge <- ifelse(0 <= act, self$act_max - act, act - self$act_min)
+      pull_to_edge <- self$cache * dist_to_edge
+      pull_to_rest <- self$act_decay * (act - self$act_rest)
+      delta <- pull_to_edge - pull_to_rest
+      act + delta
+    },
+
     uptick = function() {
       self$tick %<>% add(1)
       self$history %<>% append(self$activation)
-      self$activation <- self$cache
-      self$cache <- NA
+      self$activation <- self$compute_activation()
+      self$cache <- 0
       invisible(self)
     }
   )
@@ -59,6 +90,8 @@ FeatureNode <- R6Class("FeatureNode",
   public = list(
     type = NA,
     value = NA,
+    act_decay = trace_params$decay_feat,
+
     initialize = function(type, value) {
       # Randomized name to help tell them apart
       self$tag = rnorm(1) %>% digest() %>% substr(1, 6)
