@@ -1,10 +1,8 @@
 # Starting point for this implementation http://bit.ly/1tK0XrE
 
-library("magrittr")
-library("digest")
-library("R6")
-source("R/edge.R")
-source("R/node.R")
+phonemes <- phonemes86 <-
+  read.csv("inst/phonemes1986_l.csv", stringsAsFactors = FALSE)
+
 
 # Minimizing the Number of Parameters (p. 21)
 #
@@ -82,17 +80,27 @@ node1$compute_activation()
 
 
 trace_params$decay_feat <- .2
+
+
+
+
+
 FeatureNode$new("Consonantal", 8)
 
+
+
+
+
+node1 <- Node$new()
 node2 <- Node$new()
 node3 <- Node$new()
 node4 <- Node$new()
 
-bias <- Node$new()
-bias$activation <- 1
+bias1 <- BiasNode$new()
+bias2 <- BiasNode$new()
+connect(bias1, node1, 1)
+connect(bias2, node1, 1)
 
-
-connect(bias, node1, 1)
 connect(bias, node2, 1)
 connect(bias, node3, 1)
 connect(bias, node4, 1)
@@ -114,6 +122,9 @@ connect(node1, node3, 2)
 connect(node1, node4, 3)
 
 node1$edges_in
+bias1$edges_in
+bias1$edges_out
+bias1$edges_out
 node1$receive()
 node1$uptick()
 
@@ -121,21 +132,72 @@ node1$uptick()
 edge <- node1$edges_in[[1]]
 edges <- node1$edges_in
 
-node1$receive() %>% sum
+
 visit_sender(edge)
 visit_sender(edges)
 visit_sender(edge, f = add)
 visit_sender(edges, f = add)
 
-e1 %>% lapply(. %>% extract("weight"))
-e2 %>% lapply(. %>% extract2("weight"))
-node1$edges_in %>%
 
 
-node1$edges_out
-
-
+bias <- BiasNode$new()
 consonantal <- FeatureDetector("Consonantal")
-vocalic <- FeatureDetector("Vocalic")
+
+connect(bias, consonantal[[7]], 1)
+consonantal[[7]]$receive()
+consonantal[[7]]
+consonantal[[7]]$uptick()
+consonantal[[7]]
+consonantal[[7]]$activation
+
+c(bias, consonantal) %>% lapply(function(node) node$receive()$uptick())
 
 
+pool <- FeaturePool()
+phoneme <- PhonemeNode$new("p")
+connect_pool_to_phoneme(pool, phoneme)
+phoneme$edges_in
+
+
+# 5 up, peak activation, 5 down
+feature_gradient <- c(1:6, 5:1) / 6
+
+
+
+# Network initialization
+
+  # Parse input word into phonemes
+
+  # Parse phoneme string into feature spreads
+
+  # Overlap spreads
+
+  # Create input plan
+
+# Create a bias node for each time slice
+
+# Create a feature detector for each slice
+
+# Link bias nodes to each feature detector that should be active
+
+# Create two phoneme layers
+
+  # Link phoneme layers to each subtended feature pool
+
+
+TimeSlice <- function(address) {
+  list(bias =  BiasNode$new(),
+       feature_pool = FeaturePool(),
+       address = address)
+}
+
+t1 <- TimeSlice(1)
+
+Map(connect())
+
+connect_detectors_phoneme <- function(phoneme, pools) {
+
+  Map(connect())
+}
+
+phonemes <- read.csv("inst/phonemes1986.csv")

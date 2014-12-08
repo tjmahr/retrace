@@ -19,11 +19,18 @@ print.Edge <- function(edge, ...) {
 #' Reciprocally connect two nodes
 #' @export
 connect <- function(x, y, weight) {
-  x_to_y <- Edge(x, y, weight)
-  y_to_x <- Edge(y, x, weight)
-  x$attach_input(y_to_x)$attach_output(x_to_y)
-  y$attach_input(x_to_y)$attach_output(y_to_x)
+  connect_onto(x, y, weight)
+  connect_onto(y, x, weight)
 }
+
+#' @export
+connect_onto <- function(x, y, weight) {
+  x_onto_y <- Edge(x, y, weight)
+  x$attach_output(x_onto_y)
+  y$attach_input(x_onto_y)
+}
+
+
 
 #' Visit a Node over an Edge
 #' @param x an Edge or a list of Edges.

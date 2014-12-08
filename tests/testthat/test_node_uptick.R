@@ -48,6 +48,16 @@ test_that("Bias nodes are constant", {
 
 })
 
+
+context("features to phonemes")
+test_that("dev functions", {
+
+#   pool <- FeaturePool()
+#   phoneme <- PhonemeNode$new("p")
+#   connect_pool_to_phoneme(pool, phoneme)
+
+
+})
 # expect_equal(test_node$tick, 3)
 # expect_equal(test_node$activation, .875)
 # expect_equal(test_node$history, c(0, .5, .75))

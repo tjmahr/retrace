@@ -1,6 +1,9 @@
 require("magrittr")
 require("digest")
 require("R6")
+require("assertthat")
+require("dplyr", warn.conflicts = FALSE)
+
 
 # act = 1
 # net = -1
@@ -109,11 +112,31 @@ FeatureNode <- R6Class("FeatureNode",
     act_decay = trace_params$decay_feat,
 
     initialize = function(type, value) {
-      # Randomized name to help tell them apart
-      self$tag = rnorm(1) %>% digest() %>% substr(1, 6)
+      super$initialize()
       self$type = type
       self$value = value
+    },
+
+    describe = function() {
+      list(tag = self$tag,
+           type = self$type,
+           value = self$value)
     }
+  )
+)
+
+PhonemeNode <- R6Class("PhonemeNode",
+  inherit = Node,
+  public = list(
+   type = NA,
+   act_decay = trace_params$decay_phon,
+
+   initialize = function(type) {
+     self$activation <- self$act_rest
+     # Randomized name to help tell them apart
+     self$tag = rnorm(1) %>% digest() %>% substr(1, 6)
+     self$type = type
+   }
   )
 )
 
@@ -132,7 +155,9 @@ FeatureDetector <- function(type) {
   connect_pair_in_pool <- function(i, j, weight, pool = node_set) {
     connect(pool[[i]], pool[[j]], weight)
   }
-  Map(connect_pair_in_pool, xs, ys, 100) %>% invisible
+
+  weight <- trace_params$inhibit_feat * -1
+  Map(connect_pair_in_pool, xs, ys, weight) %>% invisible
 
   node_set
 }
