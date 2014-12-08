@@ -2,12 +2,12 @@ require("magrittr")
 require("digest")
 require("R6")
 
-act = 1
-net = -1
-min = -.3
-max = 1
-decay = 0.1
-rest = 0
+# act = 1
+# net = -1
+# min = -.3
+# max = 1
+# decay = 0.1
+# rest = 0
 
 #' @export
 Node <- R6Class("Node",
@@ -29,12 +29,11 @@ Node <- R6Class("Node",
     tick = 0,
     cache = 0,
 
-
     # Constructor
     initialize = function() {
       # Randomized name to help tell nodes apart
-      self$activation <- self$act_rest
       self$tag <- rnorm(1) %>% digest %>% substr(1, 6)
+      self$activation <- self$act_rest
     },
 
     attach_input = function(n) {
@@ -84,6 +83,23 @@ set_tail <- function(x, y) {
   x[[length(x) + 1]] <- y
   x
 }
+
+BiasNode <- R6Class("BiasNode",
+  inherit = Node,
+  public = list(
+    # Override fields from the Node class that the bias node cannot receive
+    # input and always returns a fixed input
+    act_rest = 1,
+
+    # Refuse input connections
+    attach_input = function(n) invisible(self),
+    receive = function() invisible(self),
+
+    # Constant activation
+    compute_activation = function() self$act_rest
+  )
+)
+
 
 FeatureNode <- R6Class("FeatureNode",
   inherit = Node,
