@@ -23,13 +23,26 @@ connect <- function(x, y, weight) {
   connect_onto(y, x, weight)
 }
 
+
+#' Create one-way connection between pair of nodes
 #' @export
 connect_onto <- function(x, y, weight) {
-  x_onto_y <- Edge(x, y, weight)
-  x$attach_output(x_onto_y)
-  y$attach_input(x_onto_y)
+  if (overlap(x, y)) {
+    x_onto_y <- Edge(x, y, weight)
+    x$attach_output(x_onto_y)
+    y$attach_input(x_onto_y)
+  }
+  invisible(NULL)
 }
 
+#' Do two nodes overlap in time?
+#' @export
+overlap <- function(x, y) {
+  intersect(x$timeslices, y$timeslices) %>% is_not_empty
+}
+
+is_empty <- function(x) length(x) == 0
+is_not_empty <- Negate(is_empty)
 
 
 #' Visit a Node over an Edge
