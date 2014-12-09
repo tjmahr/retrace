@@ -2,6 +2,7 @@ require("magrittr")
 require("digest")
 require("R6")
 require("assertthat")
+require("stringr")
 require("dplyr", warn.conflicts = FALSE)
 
 
@@ -16,9 +17,12 @@ require("dplyr", warn.conflicts = FALSE)
 Node <- R6Class("Node",
   public = list(
     # Structural fields
-    tag = NA,
+    tag = NA_character_,
     edges_in = list(),
     edges_out = list(),
+    timeslices = NA_integer_,
+    t_start = NA_integer_,
+    t_end = NA_integer_,
 
     # Activation parameters
     act_min = -.3,
@@ -33,7 +37,12 @@ Node <- R6Class("Node",
     cache = 0,
 
     # Constructor
-    initialize = function() {
+    initialize = function(timeslices) {
+      if (!missing(timeslices)) {
+        self$timeslices <- timeslices
+        self$t_start <- min(timeslices)
+        self$t_end   <- max(timeslices)
+      }
       # Randomized name to help tell nodes apart
       self$tag <- rnorm(1) %>% digest %>% substr(1, 6)
       self$activation <- self$act_rest
@@ -53,6 +62,12 @@ Node <- R6Class("Node",
       # Activation is sent only if greater than 0.
       signal <- ifelse(self$activation < 0, 0, self$activation)
       signal
+    },
+
+    describe = function() {
+      list(tag = self$tag,
+           t_start = min(self$timeslices),
+           t_end = max(self$timeslices))
     },
 
     receive = function() {
@@ -104,6 +119,10 @@ BiasNode <- R6Class("BiasNode",
 )
 
 
+get_tag <- function(xs) UseMethod("get_tag")
+get_tag.Node <- function(xs) xs$tag
+get_tag.list <- function(xs) lapply(xs, get_tag) %>% unlist
+
 FeatureNode <- R6Class("FeatureNode",
   inherit = Node,
   public = list(
@@ -111,16 +130,15 @@ FeatureNode <- R6Class("FeatureNode",
     value = NA,
     act_decay = trace_params$decay_feat,
 
-    initialize = function(type, value) {
-      super$initialize()
+    initialize = function(timeslices, type, value) {
+      super$initialize(timeslices)
       self$type = type
       self$value = value
     },
 
     describe = function() {
-      list(tag = self$tag,
-           type = self$type,
-           value = self$value)
+      feature_specific <- list(type = self$type, value = self$value)
+      c(super$describe(), feature_specific)
     }
   )
 )
@@ -131,11 +149,14 @@ PhonemeNode <- R6Class("PhonemeNode",
    type = NA,
    act_decay = trace_params$decay_phon,
 
-   initialize = function(type) {
-     self$activation <- self$act_rest
-     # Randomized name to help tell them apart
-     self$tag = rnorm(1) %>% digest() %>% substr(1, 6)
-     self$type = type
+   initialize = function(timeslices, type) {
+     super$initialize(timeslices)
+     self$type <- type
+   },
+
+   describe = function() {
+     phoneme_specific <- list(type = self$type)
+     c(super$describe(), phoneme_specific)
    }
   )
 )
@@ -143,10 +164,10 @@ PhonemeNode <- R6Class("PhonemeNode",
 
 
 
-FeatureDetector <- function(type) {
+FeatureDetector <- function(type, time) {
   # Create a pool of feature nodes
-  node_set <- Map(FeatureNode$new, type, 1:8) %>% unname
-
+  node_set <- Map(FeatureNode$new, timeslices = rep(time, 8), type = type,
+                  value = 1:8) %>% unname
   # All unordered x-y combinations
   xs <- combn(8, 2) %>% extract(1, )
   ys <- combn(8, 2) %>% extract(2, )
