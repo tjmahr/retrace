@@ -15,3 +15,6 @@ trace_params <- list(
   decay_phon = .03,
   decay_word = .05
 )
+
+# 5 up, peak activation, 5 down
+feature_gradient <- round(c(1:6, 5:1) / 6, 2)
