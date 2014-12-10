@@ -4,7 +4,7 @@ context("upticking")
 test_that("upticking updates values", {
   # Default values
   test_node <- Node$new()
-  expect_equal(test_node$tick, 0)
+  expect_equal(test_node$tick, 1)
   expect_equal(test_node$activation, 0)
 
   # First update from zero sets value
@@ -18,7 +18,7 @@ test_that("upticking updates values", {
   test_node$cache <- 1
   test_node$uptick()
 
-  expect_equal(test_node$tick, 3)
+  expect_equal(test_node$tick, 4)
   expect_equal(test_node$activation, 1)
   expect_equal(test_node$history, c(0, .5, 1))
 })
@@ -27,13 +27,16 @@ test_that("upticking updates values", {
 context("bias nodes")
 test_that("Bias nodes are constant", {
 
-  bias <- BiasNode$new()
+  # Default values
+  bias <- BiasNode$new(timeslice = 3)
+  expect_equal(bias$activation, 0)
+  expect_equal(bias$tick, 1)
+
+  # Resting value of 0 until awakens
+  replicate(5, bias$uptick()) %>% invisible
   expect_equal(bias$activation, 1)
 
-  # Resting value of 1
-  bias$uptick()$uptick()$uptick()
-  expect_equal(bias$activation, 1)
-  expect_equal(bias$history, c(1, 1, 1))
+  expect_equal(bias$history, c(0, 0, 1, 1, 1))
 
   # Input does nothing
   bias$cache <- 100
@@ -44,7 +47,6 @@ test_that("Bias nodes are constant", {
   test_node <- Node$new()
   connect(test_node, bias, 1)
   expect_identical(bias$edges_in, list())
-
 
 })
 

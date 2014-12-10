@@ -19,7 +19,6 @@ Node <- R6Class("Node",
     # Structural fields
     tag = NA_character_,
     edges_in = list(),
-    edges_out = list(),
     timeslices = NA_integer_,
     t_start = NA_integer_,
     t_end = NA_integer_,
@@ -33,7 +32,7 @@ Node <- R6Class("Node",
     # Activation and clock values
     activation = numeric(0),
     history = numeric(0),
-    tick = 0,
+    tick = 1,
     cache = 0,
 
     # Constructor
@@ -53,32 +52,29 @@ Node <- R6Class("Node",
       invisible(self)
     },
 
-    attach_output = function(n) {
-      self$edges_out %<>% set_tail(n) %>% unique
-      invisible(self)
-    },
-
     send_activation = function() {
       # Activation is sent only if greater than 0.
-      signal <- ifelse(self$activation < 0, 0, self$activation)
+      signal <- if (self$activation < 0) 0 else self$activation
       signal
     },
 
     describe = function() {
       list(tag = self$tag,
            t_start = min(self$timeslices),
-           t_end = max(self$timeslices))
+           t_end = max(self$timeslices),
+           activation = self$activation,
+           edges_in = length(self$edges_in))
     },
 
     receive = function() {
-      self$cache <- self$edges_in %>% visit_sender %>% sum
+      self$cache <- self$edges_in %>% visit %>% sum
       invisible(self)
     },
 
     # Rum and McCl activation function
     compute_activation = function() {
       act <- self$activation
-      dist_to_edge <- ifelse(0 <= act, self$act_max - act, act - self$act_min)
+      dist_to_edge <- if (0 <= act) self$act_max - act else act - self$act_min
       pull_to_edge <- self$cache * dist_to_edge
       pull_to_rest <- self$act_decay * (act - self$act_rest)
       delta <- pull_to_edge - pull_to_rest
@@ -107,14 +103,22 @@ BiasNode <- R6Class("BiasNode",
   public = list(
     # Override fields from the Node class that the bias node cannot receive
     # input and always returns a fixed input
-    act_rest = 1,
 
     # Refuse input connections
     attach_input = function(n) invisible(self),
     receive = function() invisible(self),
 
-    # Constant activation
-    compute_activation = function() self$act_rest
+    # Activate only when turned on
+    compute_activation = function() {
+      if (self$t_start <= self$tick) self$act_max else self$act_rest
+    },
+
+    uptick = function() {
+      self$tick %<>% add(1)
+      self$history %<>% append(self$activation)
+      self$activation <- self$compute_activation()
+      invisible(self)
+    }
   )
 )
 
@@ -167,18 +171,15 @@ PhonemeNode <- R6Class("PhonemeNode",
 FeatureDetector <- function(type, time) {
   # Create a pool of feature nodes
   node_set <- Map(FeatureNode$new, timeslices = rep(time, 8), type = type,
-                  value = 1:8) %>% unname
+                  value = 1:8) %>% unlist(use.names = FALSE)
   # All unordered x-y combinations
   xs <- combn(8, 2) %>% extract(1, )
   ys <- combn(8, 2) %>% extract(2, )
 
-  # Connect each x-y pair in the pool
-  connect_pair_in_pool <- function(i, j, weight, pool = node_set) {
-    connect(pool[[i]], pool[[j]], weight)
-  }
-
   weight <- trace_params$inhibit_feat * -1
-  Map(connect_pair_in_pool, xs, ys, weight) %>% invisible
+
+  # Connect each x-y pair in the pool
+  Map(connect, node_set[xs], node_set[ys], weight) %>% invisible
 
   node_set
 }
