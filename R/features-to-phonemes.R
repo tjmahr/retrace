@@ -1,52 +1,114 @@
+#' Create two sets of overlapping phonemes
+#' @param n_timeslices number of timeslices to span. Because phonemes are 6
+#'   timeslices wide, the number of timeslices must be divisible by 6
+#' @return a list of Phoneme
+PhonemePool <- function(n_timeslices) {
+  assert_that(n_timeslices %% 6 == 0)
+
+  # Plan of how each phoneme should span the timeslices
+  alphabet <- phonemes %>% extract2("Phoneme") %>% unique
+  phoneme_layers <- alphabet %>%
+    spread_phonemes(n_timeslices) %>% as.tbl %>%
+    arrange(Phoneme)
+
+  message("Creating ", nrow(phoneme_layers), " phonemes")
+
+  # Create a pool of nodes for the two layers
+  timeslices <- phoneme_layers %$% Map(seq, t_start, t_end)
+  phoneme_pool <- Map(PhonemeNode$new, timeslices, phoneme_layers$Phoneme) %>%
+    unlist(use.names = FALSE)
+
+  # Count and report number of edges
+  n_pools <- phoneme_layers %>% select(Layer, Span) %>% unique %>% nrow
+  n_phonemes <- length(alphabet)
+
+  message("Creating ", count_phoneme_paths(n_phonemes, n_pools),
+          " phoneme-to-phoneme weights")
+
+  ## Brute force solution: Enumerate all unordered phoneme pairs. Connect ones
+  ## that overlap.
+
+  # All unordered x-y combinations
+  xs <- combn(nrow(phoneme_layers), 2) %>% extract(1, )
+  ys <- combn(nrow(phoneme_layers), 2) %>% extract(2, )
+
+  # Phoneme connection is scaled by amount of overlap. No edge if no overlap.
+  inhibit_phon <- trace_params$inhibit_phon * -1
+  connect_phonemes <- function(x, y) {
+    weight <- determine_competition(x, y) * inhibit_phon
+    if (weight != 0) connect(x, y, weight)
+  }
+
+  # Create edges
+  Map(connect_phonemes, phoneme_pool[xs], phoneme_pool[ys]) %>% invisible
+  phoneme_pool
+}
+
+#' Create plan of how to spread phonemes over the two layers
+spread_phonemes <- function(phoneme_alphabet, n_timeslices) {
+  phoneme_alphabet <- phoneme_alphabet
+
+  spread_many_units(phoneme_alphabet, n_timeslices) %>%
+    rename(Phoneme = Unit)
+}
+
+
+
+get_phoneme_features <- function(phoneme) {
+  phonemes %>% filter(Phoneme == phoneme)
+}
+
+
+count_phoneme_paths <- function(n_phonemes, n_spans) {
+  n_gaps <- n_spans - 1
+  # n by n combinations across each gap times 2 directions
+  n_paths_across <- n_phonemes * n_phonemes * n_gaps * 2
+  # minus 1 because no self inhibition
+  n_paths_within <- n_phonemes * (n_phonemes - 1) * n_spans
+  n_paths_across + n_paths_within
+}
+
+
 
 #' Create a pool of feature detectors
-FeaturePool <- function() {
+FeaturePool <- function(time) {
   features <- c("Power", "Vocalic", "Diffuse", "Acute",
                 "Consonantal", "Voiced", "Burst")
-  detector_pool <- Map(FeatureDetector, features) %>% unlist(use.names = FALSE)
+  detector_pool <- Map(FeatureDetector, features, time) %>%
+    unlist(use.names = FALSE)
   detector_pool
 }
 
-connect_pool_to_phoneme <- function(pool, phoneme) {
-  # Single case: Find tag of matching feature-detector and connect
-  connect_feature <- function(feature, value) {
-    feature <- find_feature(pool, feature, value) %>%
-      find_tag_in_pool(pool)
-    connect(feature, phoneme, trace_params$excite_feat_phon)
-  }
-
-  phoneme_def <- phonemes %>% filter(Phoneme == p_node$type)
-
-  Map(connect_feature, phoneme_def$Feature, phoneme_def$value) %>%
-    unlist(use.names = FALSE) %>% invisible
-}
 
 
-#' Find a specific feature node in a pool of nodes
-#' @param pool a list of feature nodes
-#' @param this_type the name of feature type
-#' @param this_value the desired value for the feature
-#' @return the name of the tag of a matching feature node, wrapped in a list
-find_feature <- function(pool, this_type, this_value) {
+
+
+summarize_pool <- function(pool) {
   # Wrapper for Node$describe method so we can vectorize it
   describe <- function(node) {
-    node$describe() %>% as.data.frame(stringsAsFactors = FALSE)
+    # quickdf trick from http://adv-r.had.co.nz/Profiling.html#be-lazy
+    l <- node$describe()
+    l$NodeClass <- node %>% class %>% head(1)
+    class(l) <- "data.frame"
+    attr(l, "row.names") <- .set_row_names(length(l[[1]]))
+    l
   }
 
   # Make a data-frame summary of nodes in the pool
-  tag <- pool %>%
-    lapply(describe) %>%
-    rbind_all %>%
-    # Extract the desired node
-    filter(type == this_type, value == this_value) %>%
-    select(tag) %>%
-    as.list
-
-  tag
+  pool %>% lapply(describe) %>% rbind_all
 }
 
 
-#' Find a node by its name
+
+
+connect_tag_onto_tag <- function(x_tag, y_tag, weight, pool) {
+  x_node <- find_tag_in_pool(x_tag, pool)
+  y_node <- find_tag_in_pool(y_tag, pool)
+  connect_onto(x_node, y_node, weight)
+}
+
+
+# Find a node by its name
 find_tag_in_pool <- function(tag, pool) {
   node <- Filter(function(node) node$tag == tag, pool)
   assert_that(length(node) == 1)
@@ -60,4 +122,8 @@ lift_node <- function(xs, position = 1) {
 }
 
 is_Node <- function(x) inherits(x, "Node")
+
+
+
+
 
