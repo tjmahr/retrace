@@ -1,7 +1,7 @@
 # Starting point for this implementation http://bit.ly/1tK0XrE
 
 phonemes <- phonemes86 <-
-  read.csv("inst/phonemes1986_l.csv", stringsAsFactors = FALSE)
+  read.csv("inst/phonemes1986_l.csv", stringsAsFactors = FALSE) %>% na.omit
 
 
 # Minimizing the Number of Parameters (p. 21)
@@ -63,141 +63,158 @@ phonemes <- phonemes86 <-
 
 
 
-bias$cache <- 1
-bias$uptick()
-bias
-
-bias$cache <- 1
-bias$uptick()
+lexicon <-
+  read.csv("inst/product_lex.csv", stringsAsFactors = FALSE) %>%
+  mutate(Phones = nchar(Sounds))
+n_timeslices <- lexicon$Phones %>% max %>% compute_word_duration
 
 
-node1 <- Node$new()
-node1$activation <- .1
-node1$send_activation()
-node1$receive()
-node1$uptick()
-node1$compute_activation()
+# feature_list <- rep(0, length(feature_set)) %>%
+#   as.list %>%
+#   set_names(feature_set) %>%
+#   lapply(. %>% rep(times = n_timeslices))
+
+n_timeslices <- compute_word_duration(num_phones = 4)
+feat_matrix <- FeatureMatrix(n_timeslices)
+
+t1 <- fill_feature_matrix("t", 1, FeatureMatrix(n_timeslices))
+r2 <- fill_feature_matrix("r", 2, FeatureMatrix(n_timeslices))
+a3 <- fill_feature_matrix("a", 3, FeatureMatrix(n_timeslices))
+t4 <- fill_feature_matrix("t", 4, FeatureMatrix(n_timeslices))
+
+trat <- t1 + r2 + a3 + t4
+draw_feature_input(trat)
+feature_input <- trat
+
+# library("microbenchmark")
+# library("lineprof")
+# lineprof(BiasNode$new(1))
 
 
-trace_params$decay_feat <- .2
+initialize_network <- function(feature_input) {
+
+  n_timeslices <- ncol(feature_input)
+  nonzero_features <- make_feature_dataframe(feature_input) %>%
+    filter(Weight != 0)
+
+  message("Creating ", n_timeslices, " input units")
+  bias_layer <- Map(BiasNode$new, timeslices = seq_len(n_timeslices))
+
+  message("Creating ", n_timeslices * 54, " feature units")
+  feature_layer <- Map(FeaturePool, time = seq_len(n_timeslices))
+  feature_layer_flat <- feature_layer %>% unlist(use.names = FALSE)
 
 
+  bias_layer_tags <- bias_layer %>% summarize_pool %>%
+    select(BiasTag = tag, Time = t_start, -t_end)
+
+  feature_layer_tags <- feature_layer_flat  %>% summarize_pool %>%
+    select(Time = t_start,
+           Feature = type,
+           Value = value,
+           FeatureTag = tag)
+
+  edges_to_add <- feature_layer_tags %>%
+    inner_join(nonzero_features, by = c("Feature", "Value", "Time")) %>%
+    left_join(bias_layer_tags, by = "Time")
 
 
+  message("Creating ", nrow(edges_to_add), " input-to-feature edges")
 
-FeatureNode$new("Consonantal", 8)
+  bias_feature_pool <- c(bias_layer, feature_layer_flat)
 
+  lambda_connect <- function(x_tag, y_tag, weight, pool = bias_feature_pool) {
+    connect_tag_onto_tag(x_tag, y_tag, weight, pool)
+  }
 
-
-
-
-node1 <- Node$new()
-node2 <- Node$new()
-node3 <- Node$new()
-node4 <- Node$new()
-
-bias1 <- BiasNode$new()
-bias2 <- BiasNode$new()
-connect(bias1, node1, 1)
-connect(bias2, node1, 1)
-
-connect(bias, node2, 1)
-connect(bias, node3, 1)
-connect(bias, node4, 1)
-
-node1$receive()
-node2$receive()
-node3$receive()
-node4$receive()
+  Map(lambda_connect,
+      x_tag = edges_to_add$BiasTag,
+      y_tag = edges_to_add$FeatureTag,
+      weight = edges_to_add$Weight) %>% invisible
 
 
-node1$uptick()
-node2$uptick()
-node3$uptick()
-node4$uptick()
+  phoneme_layer <- PhonemePool(n_timeslices)
+  features_per_phoneme <- phonemes %>% group_by(Phoneme) %>% tally
 
+  phoneme_layer_df <- phoneme_layer %>%
+    summarize_pool %>%
+    rename(Phoneme = type) %>%
+    left_join(features_per_phoneme, by = "Phoneme") %>%
+    mutate(n_features = t_end - t_start + 1,
+           n_paths = n_features * n)
+  feature_to_phoneme <- sum(phoneme_layer_df$n_paths)
 
-connect(node1, node2, 1)
-connect(node1, node3, 2)
-connect(node1, node4, 3)
+  message("Creating ", feature_to_phoneme, " feature-to-phoneme paths")
 
-node1$edges_in
-bias1$edges_in
-bias1$edges_out
-bias1$edges_out
-node1$receive()
-node1$uptick()
+  connect_feature_pool_to_phoneme <- function(phoneme_node) {
+    compatible_features <- get_phoneme_features(phoneme_node$type)
+    feature_pools <- feature_layer[phoneme_node$timeslices] %>%
+      unlist(use.names = FALSE)
 
+    # Get tags of all compatible feature nodes
+    feature_tags <- feature_pools %>% summarize_pool %>%
+      rename(Feature = type) %>%
+      inner_join(compatible_features, by = c("Feature", "value")) %>%
+      extract2("tag")
 
-edge <- node1$edges_in[[1]]
-edges <- node1$edges_in
+    # Extract those nodes
+    matching_tags <- feature_pools %>% get_tag %>% is.element(feature_tags)
+    feature_nodes <- feature_pools[matching_tags] %>% unlist(use.names = FALSE)
 
+    lifted_pnode <- list(phoneme_node)
+    Map(connect_onto, feature_nodes, lifted_pnode, trace_params$excite_feat_phon) %>% invisible
+  }
 
-visit_sender(edge)
-visit_sender(edges)
-visit_sender(edge, f = add)
-visit_sender(edges, f = add)
+  Map(connect_feature_pool_to_phoneme, phoneme_layer) %>% invisible
 
-
-
-bias <- BiasNode$new()
-consonantal <- FeatureDetector("Consonantal")
-
-connect(bias, consonantal[[7]], 1)
-consonantal[[7]]$receive()
-consonantal[[7]]
-consonantal[[7]]$uptick()
-consonantal[[7]]
-consonantal[[7]]$activation
-
-c(bias, consonantal) %>% lapply(function(node) node$receive()$uptick())
-
-
-pool <- FeaturePool()
-phoneme <- PhonemeNode$new("p")
-connect_pool_to_phoneme(pool, phoneme)
-phoneme$edges_in
-
-
-# 5 up, peak activation, 5 down
-feature_gradient <- c(1:6, 5:1) / 6
-
-
-
-# Network initialization
-
-  # Parse input word into phonemes
-
-  # Parse phoneme string into feature spreads
-
-  # Overlap spreads
-
-  # Create input plan
-
-# Create a bias node for each time slice
-
-# Create a feature detector for each slice
-
-# Link bias nodes to each feature detector that should be active
-
-# Create two phoneme layers
-
-  # Link phoneme layers to each subtended feature pool
-
-
-TimeSlice <- function(address) {
-  list(bias =  BiasNode$new(),
-       feature_pool = FeaturePool(),
-       address = address)
+  structure(list(
+    bias_layer = bias_layer,
+    feature_layer = feature_layer_flat,
+    phoneme_layer = phoneme_layer),
+    class = "Network")
 }
 
-t1 <- TimeSlice(1)
 
-Map(connect())
 
-connect_detectors_phoneme <- function(phoneme, pools) {
+trace <- initialize_network(feature_input)
 
-  Map(connect())
+network <- unlist(trace, use.names = FALSE)
+
+
+for(x in 1:60) {
+  network %>% lapply(function(x) {x$receive(); NULL})
+  network %>% lapply(function(x) {x$uptick(); NULL})
 }
 
-phonemes <- read.csv("inst/phonemes1986.csv")
+
+
+plot_bias_layer <- function(network) {
+
+#   this_node <- network[get_tag(network) == "27d209"] %>% lift_node
+#   this_node$edges_in
+  bias_layer <- network %>% summarize_pool %>% filter(NodeClass == "BiasNode")
+  network_tick <- network %>% vapply(function(x) x$tick, 1) %>% max
+
+  title = paste0("Num updates: ", network_tick - 1)
+
+  feature_layer <- network %>% summarize_pool %>%
+    filter(NodeClass == "FeatureNode", 0 < activation )
+
+
+  qplot(data = feature_layer, x = t_start, y = activation, geom = "text", label = value) + facet_wrap("type")
+  qplot(data = feature_layer, x = t_start, y = value, size = activation) + facet_wrap("type")
+
+  phoneme_layer <- network %>% summarize_pool %>%
+    filter(NodeClass == "PhonemeNode", activation != 0) %>%
+    mutate(Time = (t_start + t_end) / 2)
+
+
+  qplot(data = phoneme_layer, x = Time, y = activation, geom = "text", label = type) +
+    labs(title = title) + ylim(-.3, 1)
+
+  feature_layer
+  network_tick <- network %>% vapply(function(x) x$tick, 1) %>% max
+
+  qplot(data = feature_layer, x = t_start, y = activation, geom = "text", label = factor(value)) + facet_wrap("type") + coord_cartesian(xlim = c(0, 30), ylim = c(-.3, 1.1))
+
+}
