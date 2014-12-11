@@ -1,3 +1,50 @@
+WordPool <- function(n_timeslices, lexicon) {
+  assert_that(n_timeslices %% 6 == 0)
+
+  # Plan of how each word should span the timeslices
+  words <- lexicon[["Sounds"]] %>% unique
+  word_layers <- words %>% spread_many_units(n_timeslices) %>% as.tbl %>%
+    rename(Sounds = Unit) %>%
+    left_join(lexicon, by = "Sounds") %>%
+    arrange(Sounds)
+
+  message("Creating ", nrow(word_layers), " word units")
+
+  # Create a pool of words
+  timeslices <- word_layers %$% Map(seq, t_start, t_end)
+  word_pool <- word_layers %$%
+    Map(WordNode$new, timeslices, type = Word, sounds = Sounds) %>%
+    unlist(use.names = FALSE)
+
+  # Count and report number of edges
+  #   n_pools <- word_layers %>% select(Layer, Span) %>% unique %>% nrow
+  #   n_words <- length(words)
+  #
+  #   message("Creating ", count_phoneme_paths(n_phonemes, n_pools),
+  #           " phoneme-to-phoneme weights")
+
+  ## Brute force solution: Enumerate all unordered phoneme pairs. Connect ones
+  ## that overlap.
+
+  # All unordered x-y combinations
+  xs <- combn(nrow(word_layers), 2) %>% extract(1, )
+  ys <- combn(nrow(word_layers), 2) %>% extract(2, )
+
+  # Phoneme connection is scaled by amount of overlap. No edge if no overlap.
+  inhibit_word <- trace_params$inhibit_word * -1
+
+  connect_words <- function(x, y) {
+    weight <- determine_competition(x, y) * inhibit_word
+    if (weight != 0) connect(x, y, weight)
+  }
+
+  # Create edges
+  Map(connect_words, word_pool[xs], word_pool[ys]) %>% invisible
+  word_pool
+
+}
+
+
 # Each higher-level units spans the width of its number of constuent phonemes
 compute_unit_span <- function(unit) nchar(unit) * 6
 
@@ -86,7 +133,16 @@ squish_span <- function(starts, ends, n_timeslices) {
   list(t_start = starts, t_end = ends, Span = seq_along(ends))
 }
 
+connect_phoneme_to_word <- function(phon, word) {
+  if (phoneme_word_overlap(phon, word)) {
+    connect_onto(phon, word, weight = trace_params$excite_phon_word)
+    connect_onto(word, phon, weight = trace_params$excite_word_phon)
+  }
+  invisible(NULL)
+}
 
-
+phoneme_word_overlap <- function(x, y) {
+  overlap(x, y) & is.element(x$type, y$phonemes)
+}
 
 

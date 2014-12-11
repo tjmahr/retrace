@@ -167,6 +167,29 @@ PhonemeNode <- R6Class("PhonemeNode",
 )
 
 
+WordNode <- R6Class("WordNode",
+  inherit = Node,
+  public = list(
+   type = NA_character_,
+   sounds = NA_character_,
+   phonemes = NA_character_,
+   act_decay = trace_params$decay_word,
+
+   initialize = function(timeslices, type, sounds) {
+     super$initialize(timeslices)
+     self$type <- type
+     self$sounds <- sounds
+     self$phonemes <- inventory_sounds(sounds)
+   },
+
+   describe = function() {
+     word_specific <- list(type = self$type, sounds = self$sounds)
+     c(super$describe(), word_specific)
+   }
+  )
+)
+
+
 
 
 FeatureDetector <- function(type, time) {
