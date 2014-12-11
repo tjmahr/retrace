@@ -32,7 +32,7 @@ Node <- R6Class("Node",
     # Activation and clock values
     activation = numeric(0),
     history = numeric(0),
-    tick = 1,
+    tick = 0,
     cache = 0,
 
     # Constructor
@@ -110,7 +110,8 @@ BiasNode <- R6Class("BiasNode",
 
     # Activate only when turned on
     compute_activation = function() {
-      if (self$t_start <= self$tick) self$act_max else self$act_rest
+      timely_tick <- is.element(self$tick, self$timeslices)
+      if (timely_tick) self$act_max else self$act_rest
     },
 
     uptick = function() {
@@ -130,8 +131,8 @@ get_tag.list <- function(xs) lapply(xs, get_tag) %>% unlist
 FeatureNode <- R6Class("FeatureNode",
   inherit = Node,
   public = list(
-    type = NA,
-    value = NA,
+    type = NA_character_,
+    value = NA_integer_,
     act_decay = trace_params$decay_feat,
 
     initialize = function(timeslices, type, value) {
@@ -150,7 +151,7 @@ FeatureNode <- R6Class("FeatureNode",
 PhonemeNode <- R6Class("PhonemeNode",
   inherit = Node,
   public = list(
-   type = NA,
+   type = NA_character_,
    act_decay = trace_params$decay_phon,
 
    initialize = function(timeslices, type) {

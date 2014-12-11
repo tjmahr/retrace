@@ -1,10 +1,10 @@
 library("testthat")
 context("upticking")
 
-test_that("upticking updates values", {
-  # Default values
+test_that("Upticking on a single Node", {
+  # Default values. Ticks start at 0
   test_node <- Node$new()
-  expect_equal(test_node$tick, 1)
+  expect_equal(test_node$tick, 0)
   expect_equal(test_node$activation, 0)
 
   # First update from zero sets value
@@ -18,7 +18,7 @@ test_that("upticking updates values", {
   test_node$cache <- 1
   test_node$uptick()
 
-  expect_equal(test_node$tick, 4)
+  expect_equal(test_node$tick, 3)
   expect_equal(test_node$activation, 1)
   expect_equal(test_node$history, c(0, .5, 1))
 })
@@ -28,20 +28,27 @@ context("bias nodes")
 test_that("Bias nodes are constant", {
 
   # Default values
-  bias <- BiasNode$new(timeslice = 3)
+  test_timeslice <- 3:5
+  bias <- BiasNode$new(timeslice = test_timeslice)
   expect_equal(bias$activation, 0)
-  expect_equal(bias$tick, 1)
+  expect_equal(bias$tick, 0)
 
   # Resting value of 0 until awakens
-  replicate(5, bias$uptick()) %>% invisible
-  expect_equal(bias$activation, 1)
+  replicate(10, bias$uptick()) %>% invisible
+  expect_equal(bias$activation, 0)
 
-  expect_equal(bias$history, c(0, 0, 1, 1, 1))
+  # History starts counting at 0.
+  test_timeslice_index <- test_timeslice + 1
+
+  # Only values during timeslice are 1
+  are_all <- function(xs, y) all(xs == y)
+  expect_true(are_all(bias$history[test_timeslice_index], 1))
+  expect_true(are_all(bias$history[-test_timeslice_index], 0))
 
   # Input does nothing
   bias$cache <- 100
   bias$receive()$uptick()
-  expect_equal(bias$activation, 1)
+  expect_equal(bias$activation, 0)
 
   # Cannot attach edge onto bias
   test_node <- Node$new()
