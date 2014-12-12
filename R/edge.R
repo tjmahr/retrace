@@ -3,8 +3,6 @@
 Edge <- function(sender, receiver, weight) {
   structure(
     list(s_tag = sender$tag,
-#          r_tag = receiver$tag,
-#          receiver = receiver,
          sender = sender,
          weight = weight),
     class = c("Edge"))
@@ -29,7 +27,6 @@ connect <- function(x, y, weight) {
 connect_onto <- function(x, y, weight) {
   if (overlap(x, y)) {
     x_onto_y <- Edge(x, y, weight)
-#     x$attach_output(x_onto_y)
     y$attach_input(x_onto_y)
   }
   invisible(NULL)
