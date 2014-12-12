@@ -1,3 +1,20 @@
+
+create_input_matrix <- function(word, phoneme_set = phonemes) {
+  sounds <- str_tokenize(word)
+
+  n_timeslices <- length(sounds) %>% compute_word_duration
+  input_template <- FeatureMatrix(n_timeslices)
+
+
+  input_matrix <- input_template
+  for (sound_i in seq_along(sounds)) {
+    matrix_i <- fill_feature_matrix(sounds[[sound_i]], sound_i, input_template, phoneme_set)
+    input_matrix <- input_matrix + matrix_i
+  }
+  input_matrix
+}
+
+
 FeatureMatrix <- function(n_timeslices) {
   features <- c("Acute", "Burst", "Consonantal", "Diffuse",
                 "Power", "Vocalic", "Voiced")
@@ -40,20 +57,27 @@ make_feature_dataframe <- function(feature_matrix) {
   feat_df
 }
 
-draw_feature_input <- function(feature_matrix) {
-  feat_df <- feature_matrix %>% make_feature_dataframe %>% filter(Weight != 0)
 
-  require("ggplot2")
+#' Plot feature values
+#' @param feature_matrix an input feature matrix
+#' @return a ggplot object showing how feature values vary and overlap over the
+#'   course of the time input
+#' @export
+plot_feature_input <- function(feature_matrix) {
+  # Filter out negative weights so that 0 point values don't clutter plot
+  feat_df <- make_feature_dataframe(feature_matrix) %>%
+    filter(Weight != 0)
 
-  qplot(data = feat_df, x = Time, size = Weight, y = Value) +
+  p <- qplot(data = feat_df, x = Time, size = Weight, y = Value) +
     facet_wrap("Feature")
+  p
 }
 
 
-fill_feature_matrix <- function(phoneme, phoneme_number, feat_matrix) {
+fill_feature_matrix <- function(phoneme, phoneme_number, feat_matrix, phoneme_set) {
   start_time <- compute_phoneme_start(phoneme_number)
   # Rows to select
-  phoneme_def <- phonemes %>%
+  phoneme_def <- phoneme_set %>%
     filter(Phoneme == phoneme) %>%
     transmute(Row = paste0(Feature, value)) %>%
     extract2("Row")

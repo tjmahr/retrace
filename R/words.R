@@ -57,8 +57,8 @@ compute_unit_span <- function(unit) nchar(unit) * 6
 spread_many_units <- function(units, n_timeslices) {
   # Represent units as dashes so that each unique unit-length is only spread
   # once. This will save us unnecessary calculations.
-  lexicon <- data_frame(LetterUnit = units, Unit = make_dashes(units))
-  dashes <- make_dashes(units) %>% unique
+  lexicon <- data_frame(LetterUnit = units, Unit = str_censor(units))
+  dashes <- str_censor(units) %>% unique
 
   spread_generic_units(dashes, n_timeslices) %>%
     left_join(lexicon, ., by = "Unit") %>%

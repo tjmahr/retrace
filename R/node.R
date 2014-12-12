@@ -3,6 +3,7 @@ require("digest")
 require("R6")
 require("assertthat")
 require("stringr")
+require("ggplot2")
 require("dplyr", warn.conflicts = FALSE)
 
 
@@ -13,6 +14,7 @@ require("dplyr", warn.conflicts = FALSE)
 # decay = 0.1
 # rest = 0
 
+#' The Node class
 #' @export
 Node <- R6Class("Node",
   public = list(
@@ -42,7 +44,7 @@ Node <- R6Class("Node",
         self$t_start <- min(timeslices)
         self$t_end   <- max(timeslices)
       }
-      # Randomized name to help tell nodes apart
+      # Randomized name to tell nodes apart
       self$tag <- rnorm(1) %>% digest %>% substr(1, 6)
       self$activation <- self$act_rest
     },
@@ -68,7 +70,7 @@ Node <- R6Class("Node",
 
     receive = function() {
       self$cache <- self$edges_in %>% visit %>% sum
-      invisible(self)
+      invisible(NULL)
     },
 
     # Rum and McCl activation function
@@ -92,11 +94,7 @@ Node <- R6Class("Node",
 )
 
 
-#' Append an item onto a list
-set_tail <- function(x, y) {
-  x[[length(x) + 1]] <- y
-  x
-}
+
 
 BiasNode <- R6Class("BiasNode",
   inherit = Node,
@@ -179,7 +177,7 @@ WordNode <- R6Class("WordNode",
      super$initialize(timeslices)
      self$type <- type
      self$sounds <- sounds
-     self$phonemes <- inventory_sounds(sounds)
+     self$phonemes <- str_inventory(sounds)
    },
 
    describe = function() {
