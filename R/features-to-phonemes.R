@@ -79,6 +79,32 @@ FeaturePool <- function(time) {
   detector_pool
 }
 
+#' Create a pool of mutually inhibitory nodes for all values in a single
+#' feature.
+#'
+#' TODO the feature value range (0 to 8) is hard-coded. Should be expressed as a
+#' parameter.
+FeatureDetector <- function(type, time) {
+  # Create a pool of feature nodes
+  feature_range <- 0:8
+  n_features <- length(feature_range)
+  slices <- time %>% rep(n_features)
+
+  node_set <- Map(FeatureNode$new, timeslices = slices, type = type,
+                  value = feature_range) %>% unlist(use.names = FALSE)
+
+  # All unordered x-y combinations. Note: These values refer to positions in the
+  # node_set, not the value of the node. node_set[N] has feature value N-1.
+  pairs <- combn(n_features, 2)
+  xs <- pairs[1, ]
+  ys <- pairs[2, ]
+
+  # Connect each x-y pair in the pool
+  weight <- trace_params$inhibit_feat * -1
+  Map(connect, node_set[xs], node_set[ys], weight) %>% invisible
+
+  node_set
+}
 
 
 
@@ -117,11 +143,11 @@ find_tag_in_pool <- function(tag, pool) {
 
 # lift a node from a list
 lift_node <- function(xs, position = 1) {
-  assert_that(is_Node(xs[[position]]))
+  assert_that(is_node(xs[[position]]))
   xs[[position]]
 }
 
-is_Node <- function(x) inherits(x, "Node")
+is_node <- function(x) inherits(x, "Node")
 
 
 

@@ -51,3 +51,14 @@ str_tokenize <- function(word) {
 str_censor  <- function(xs) {
   str_replace_all(xs, ".", "-")
 }
+
+#' Add silence to start and end of word
+#' @inheritParams str_censor
+#' @return the inputted strings but with silence characters ("-") added to
+#'   beginning and end of word.
+#' @examples
+#' str_wrap_silence(c("", "a", "ab"))
+#' # c("--", "-a-", "-ab-")
+str_wrap_silence <- function(xs) {
+  sprintf("-%s-", xs)
+}

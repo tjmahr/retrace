@@ -10,18 +10,30 @@
 #' @return a list of interconnected feature, phoneme, and word nodes
 #' @export
 initialize_network <- function(feature_input, lexicon) {
+  # Make sure lexicon includes silence
+  if (!is.element("SILENCE", lexicon$Word)) {
+    lexicon %<>% rbind(data.frame(Word = "SILENCE", Sounds = "-"))
+  }
 
   n_timeslices <- ncol(feature_input)
+  feature_count <- length(feature_input)
   nonzero_features <- make_feature_dataframe(feature_input) %>%
     filter(Weight != 0)
 
   message("Creating ", n_timeslices, " input units")
   bias_layer <- Map(BiasNode$new, timeslices = seq_len(n_timeslices))
 
-  message("Creating ", n_timeslices * 54, " feature units")
+  message("Creating ", feature_count, " feature units")
   feature_layer <- Map(FeaturePool, time = seq_len(n_timeslices))
+  # feature_layer has a sublist for each timeslice. Flatten into a single list
+  # to help with some operations later on.
   feature_layer_flat <- feature_layer %>% unlist(use.names = FALSE)
 
+  assert_that(
+    length(bias_layer) == n_timeslices,
+    length(feature_layer) == n_timeslices,
+    length(feature_layer_flat) == feature_count
+  )
 
   bias_layer_tags <- bias_layer %>% summarize_pool %>%
     select(BiasTag = tag, Time = t_start, -t_end)
@@ -38,9 +50,7 @@ initialize_network <- function(feature_input, lexicon) {
 
 
   message("Creating ", nrow(edges_to_add), " input-to-feature edges")
-
   bias_feature_pool <- c(bias_layer, feature_layer_flat)
-
   lambda_connect <- function(x_tag, y_tag, weight, pool = bias_feature_pool) {
     connect_tag_onto_tag(x_tag, y_tag, weight, pool)
   }
@@ -52,6 +62,7 @@ initialize_network <- function(feature_input, lexicon) {
 
 
   phoneme_layer <- PhonemePool(n_timeslices)
+
   features_per_phoneme <- phonemes %>% group_by(Phoneme) %>% tally
 
   phoneme_layer_df <- phoneme_layer %>%

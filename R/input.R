@@ -1,30 +1,35 @@
 
 create_input_matrix <- function(word, phoneme_set = phonemes) {
-  sounds <- str_tokenize(word)
-
+  # The word is wrapped in silence first
+  sounds <- word %>% str_wrap_silence %>% str_tokenize
   n_timeslices <- length(sounds) %>% compute_word_duration
+
+  # Create an input matrix for each sound. Layer the individual sound matrices
+  # on top of each other (i.e., add them together) to create overlapping feature
+  # values in the word.
   input_template <- FeatureMatrix(n_timeslices)
-
-
   input_matrix <- input_template
   for (sound_i in seq_along(sounds)) {
-    matrix_i <- fill_feature_matrix(sounds[[sound_i]], sound_i, input_template, phoneme_set)
+    sound <- sounds[[sound_i]]
+    matrix_i <- fill_feature_matrix(sound, sound_i, input_template, phoneme_set)
     input_matrix <- input_matrix + matrix_i
   }
   input_matrix
 }
 
 
-FeatureMatrix <- function(n_timeslices) {
+#' Create an matrix to hold the feature values of an input word
+FeatureMatrix <- function(n_timeslices, feature_range = 0:8) {
   features <- c("Acute", "Burst", "Consonantal", "Diffuse",
                 "Power", "Vocalic", "Voiced")
-  feature_set <- features %>% lapply(. %>% paste0(0:8)) %>% unlist
+  feature_set <- outer(features, feature_range, paste0) %>%
+    as.character %>% sort
+
   matrix(0, nrow = length(feature_set), ncol = n_timeslices, byrow = TRUE) %>%
     set_rownames(feature_set)
 }
 
 #' How many timeslices are needed to encode a number of phonemes?
-#' TODO: Encode final bit as silence?
 compute_word_duration <- function(num_phones) {
   # Phonemes spread over 11 units. We add one slice to end so that number of
   # slices is divisible six (width of a phoneme unit)

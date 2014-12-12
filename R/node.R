@@ -190,18 +190,4 @@ WordNode <- R6Class("WordNode",
 
 
 
-FeatureDetector <- function(type, time) {
-  # Create a pool of feature nodes
-  node_set <- Map(FeatureNode$new, timeslices = rep(time, 8), type = type,
-                  value = 1:8) %>% unlist(use.names = FALSE)
-  # All unordered x-y combinations
-  xs <- combn(8, 2) %>% extract(1, )
-  ys <- combn(8, 2) %>% extract(2, )
 
-  weight <- trace_params$inhibit_feat * -1
-
-  # Connect each x-y pair in the pool
-  Map(connect, node_set[xs], node_set[ys], weight) %>% invisible
-
-  node_set
-}

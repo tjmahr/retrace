@@ -13,6 +13,7 @@
 "i","Power",8
 "u","Power",8
 "^","Power",7
+"-","Power",0
 "p","Vocalic",1
 "b","Vocalic",1
 "t","Vocalic",1
@@ -27,6 +28,7 @@
 "i","Vocalic",8
 "u","Vocalic",8
 "^","Vocalic",8
+"-","Vocalic",0
 "p","Diffuse",7
 "b","Diffuse",7
 "t","Diffuse",7
@@ -41,6 +43,7 @@
 "i","Diffuse",8
 "u","Diffuse",6
 "^","Diffuse",5
+"-","Diffuse",0
 "p","Acute",2
 "b","Acute",2
 "t","Acute",7
@@ -55,6 +58,7 @@
 "i","Acute",8
 "u","Acute",2
 "^","Acute",1
+"-","Acute",0
 "p","Consonantal",8
 "b","Consonantal",8
 "t","Consonantal",8
@@ -69,6 +73,7 @@
 "i","Consonantal",1
 "u","Consonantal",1
 "^","Consonantal",1
+"-","Consonantal",0
 "p","Voiced",1
 "b","Voiced",7
 "t","Voiced",1
@@ -83,17 +88,11 @@
 "i","Voiced",8
 "u","Voiced",8
 "^","Voiced",8
+"-","Voiced",0
 "p","Burst",8
 "b","Burst",7
 "t","Burst",6
 "d","Burst",5
 "k","Burst",4
 "g","Burst",3
-"s","Burst",NA
-"S","Burst",NA
-"r","Burst",NA
-"l","Burst",NA
-"a","Burst",NA
-"i","Burst",NA
-"u","Burst",NA
-"^","Burst",NA
+"-","Burst",0
