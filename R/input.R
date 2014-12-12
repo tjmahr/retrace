@@ -78,7 +78,7 @@ fill_feature_matrix <- function(phoneme, phoneme_number, feat_matrix, phoneme_se
   start_time <- compute_phoneme_start(phoneme_number)
   # Rows to select
   phoneme_def <- phoneme_set %>%
-    filter(Phoneme == phoneme) %>%
+    filter(Phoneme == phoneme, !is.na(value))%>%
     transmute(Row = paste0(Feature, value)) %>%
     extract2("Row")
 

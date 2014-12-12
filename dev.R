@@ -1,9 +1,5 @@
 # Starting point for this implementation http://bit.ly/1tK0XrE
 
-phonemes <- phonemes86 <-
-  read.csv("inst/phonemes1986_l.csv", stringsAsFactors = FALSE) %>% na.omit
-
-
 # Minimizing the Number of Parameters (p. 21)
 #
 # At the expense of considerable realism, we have tried to keep TRACE II simple
@@ -63,128 +59,120 @@ phonemes <- phonemes86 <-
 
 
 
-lexicon <-
-  read.csv("inst/product_lex.csv", stringsAsFactors = FALSE) %>%
-  mutate(Phones = nchar(Sounds))
-n_timeslices <- lexicon$Phones %>% max %>% compute_word_duration
+# lexicon <- read.csv("inst/product_lex.csv", stringsAsFactors = FALSE)
 
+
+lexicon <- read.csv("inst/blood_lex.csv", stringsAsFactors = FALSE)
+
+# Create ambiguous phoneme B
+X <- get_phoneme_features("b") %>% mutate(Phoneme = "X")
+X[which(X$Feature == "Voiced"), "value"] <- NA
+X[which(X$Feature == "Burst"), "value"] <- NA
+phoneme_set <- rbind(phonemes, X)
+
+feat_mat <- tidyr::spread(phoneme_set, Phoneme, value)
+
+feat_mat$X - feat_mat$b
+feat_mat$X - feat_mat$p
 
 # feature_list <- rep(0, length(feature_set)) %>%
 #   as.list %>%
 #   set_names(feature_set) %>%
 #   lapply(. %>% rep(times = n_timeslices))
 
-n_timeslices <- compute_word_duration(num_phones = 4)
-feat_matrix <- FeatureMatrix(n_timeslices)
+# n_timeslices <- compute_word_duration(num_phones = 4)
+# feat_matrix <- FeatureMatrix(n_timeslices)
+#
+# phoneme_set <- phonemes
+#
+# set <- rbind_list(b, p, B)
+# qplot(data = set, x = Feature, y = value, label = Phoneme, geom = "text")
+#
+# blush <- create_input_matrix("bl^S")
+# draw_feature_input(blush)
 
-t1 <- fill_feature_matrix("t", 1, FeatureMatrix(n_timeslices))
-r2 <- fill_feature_matrix("r", 2, FeatureMatrix(n_timeslices))
-a3 <- fill_feature_matrix("a", 3, FeatureMatrix(n_timeslices))
-t4 <- fill_feature_matrix("t", 4, FeatureMatrix(n_timeslices))
+ambig <- create_input_matrix("Xl^g", phoneme_set)
+plot_feature_input(ambig)
 
-trat <- t1 + r2 + a3 + t4
-draw_feature_input(trat)
-feature_input <- trat
+plug <- create_input_matrix("pl^g", phonemes)
+plot_feature_input(plug)
 
-# library("microbenchmark")
-# library("lineprof")
-# lineprof(BiasNode$new(1))
-
-
-initialize_network <- function(feature_input) {
-
-  n_timeslices <- ncol(feature_input)
-  nonzero_features <- make_feature_dataframe(feature_input) %>%
-    filter(Weight != 0)
-
-  message("Creating ", n_timeslices, " input units")
-  bias_layer <- Map(BiasNode$new, timeslices = seq_len(n_timeslices))
-
-  message("Creating ", n_timeslices * 54, " feature units")
-  feature_layer <- Map(FeaturePool, time = seq_len(n_timeslices))
-  feature_layer_flat <- feature_layer %>% unlist(use.names = FALSE)
+# lexicon
+#
+#
+# trat <- create_input_matrix("trat")
 
 
-  bias_layer_tags <- bias_layer %>% summarize_pool %>%
-    select(BiasTag = tag, Time = t_start, -t_end)
-
-  feature_layer_tags <- feature_layer_flat  %>% summarize_pool %>%
-    select(Time = t_start,
-           Feature = type,
-           Value = value,
-           FeatureTag = tag)
-
-  edges_to_add <- feature_layer_tags %>%
-    inner_join(nonzero_features, by = c("Feature", "Value", "Time")) %>%
-    left_join(bias_layer_tags, by = "Time")
+timestamp()
+trace <- initialize_network(plug, lexicon)
+trace <- initialize_network(ambig, lexicon)
 
 
-  message("Creating ", nrow(edges_to_add), " input-to-feature edges")
-
-  bias_feature_pool <- c(bias_layer, feature_layer_flat)
-
-  lambda_connect <- function(x_tag, y_tag, weight, pool = bias_feature_pool) {
-    connect_tag_onto_tag(x_tag, y_tag, weight, pool)
-  }
-
-  Map(lambda_connect,
-      x_tag = edges_to_add$BiasTag,
-      y_tag = edges_to_add$FeatureTag,
-      weight = edges_to_add$Weight) %>% invisible
+n00 <- summarize_pool(trace) %>% mutate(tick = 0)
+n_history <- n00
+uptick(trace, 15)
 
 
-  phoneme_layer <- PhonemePool(n_timeslices)
-  features_per_phoneme <- phonemes %>% group_by(Phoneme) %>% tally
-
-  phoneme_layer_df <- phoneme_layer %>%
-    summarize_pool %>%
-    rename(Phoneme = type) %>%
-    left_join(features_per_phoneme, by = "Phoneme") %>%
-    mutate(n_features = t_end - t_start + 1,
-           n_paths = n_features * n)
-  feature_to_phoneme <- sum(phoneme_layer_df$n_paths)
-
-  message("Creating ", feature_to_phoneme, " feature-to-phoneme paths")
-
-  connect_feature_pool_to_phoneme <- function(phoneme_node) {
-    compatible_features <- get_phoneme_features(phoneme_node$type)
-    feature_pools <- feature_layer[phoneme_node$timeslices] %>%
-      unlist(use.names = FALSE)
-
-    # Get tags of all compatible feature nodes
-    feature_tags <- feature_pools %>% summarize_pool %>%
-      rename(Feature = type) %>%
-      inner_join(compatible_features, by = c("Feature", "value")) %>%
-      extract2("tag")
-
-    # Extract those nodes
-    matching_tags <- feature_pools %>% get_tag %>% is.element(feature_tags)
-    feature_nodes <- feature_pools[matching_tags] %>% unlist(use.names = FALSE)
-
-    lifted_pnode <- list(phoneme_node)
-    Map(connect_onto, feature_nodes, lifted_pnode, trace_params$excite_feat_phon) %>% invisible
-  }
-
-  Map(connect_feature_pool_to_phoneme, phoneme_layer) %>% invisible
-
-  structure(list(
-    bias_layer = bias_layer,
-    feature_layer = feature_layer_flat,
-    phoneme_layer = phoneme_layer),
-    class = "Network")
+plot_phonemes_layer <- function(network) {
+  n_df <- function
 }
 
+for (tick in seq(12, 120, by = 12)) {
+  trace <- update_network(trace, 12)
+  this_tick <- summarize_pool(trace) %>% mutate(tick = tick)
 
-
-trace <- initialize_network(feature_input)
-
-network <- unlist(trace, use.names = FALSE)
-
-
-for(x in 1:60) {
-  network %>% lapply(function(x) {x$receive(); NULL})
-  network %>% lapply(function(x) {x$uptick(); NULL})
+  n_history <- rbind(n_history, this_tick)
 }
+timestamp()
+
+
+
+# n_history <- rbind_list(n00, n06, n12, n18, n24, n36, n48, n60)
+
+
+write.csv(n_history, file = "ganong.csv", row.names = FALSE)
+
+n_history <- summarize_pool(trace)
+
+phones_and_words <- n_history %>%
+  filter(NodeClass %in% c("PhonemeNode", "WordNode")) %>%
+  mutate(Time = (t_start + t_end) / 2) %>%
+  mutate(Class = factor(NodeClass, levels = c("WordNode", "PhonemeNode")))
+
+#
+# ggplot(data = n_history) +
+#   aes(x = t_start - .5, xend = t_end, y = activation, yend = activation) +
+#   geom_segment() + facet_grid(NodeClass ~ .)
+
+ggplot(data = phones_and_words) +
+  aes(x = t_start, xend = t_end, y = activation, yend = activation) +
+  geom_segment() + facet_grid(Class ~ .)
+
+
+offset <- phones_and_words$activation %>% range %>% diff %>% divide_by(20)
+ignorable <- filter(phones_and_words, (offset) < abs(activation))
+
+ignorable$width <- (ignorable$t_end - ignorable$t_start) + 1
+
+
+
+ggplot(data = ignorable) +
+  aes(xmin = t_start, xmax = t_end, ymin = activation - offset, ymax = activation + offset) +
+  geom_rect(color = "black", fill = NA) +
+  geom_text(aes(x = Time, y = activation, label = type)) +
+  facet_grid(Class ~ .)
+
+
+
+
+
+#   p + geom_
+
+
+qplot(data = ignorable, alpha = activation, x = Time, y = activation, angle = 45, geom = "text", label = type) + facet_grid(Class ~ .)
+
+
+
 
 
 
@@ -195,23 +183,18 @@ plot_bias_layer <- function(network) {
   bias_layer <- network %>% summarize_pool %>% filter(NodeClass == "BiasNode")
   network_tick <- network %>% vapply(function(x) x$tick, 1) %>% max
 
-  title = paste0("Num updates: ", network_tick - 1)
+  title = paste0("Num updates: ", network_tick)
 
   feature_layer <- network %>% summarize_pool %>%
     filter(NodeClass == "FeatureNode", 0 < activation )
 
 
-  qplot(data = feature_layer, x = t_start, y = activation, geom = "text", label = value) + facet_wrap("type")
-  qplot(data = feature_layer, x = t_start, y = value, size = activation) + facet_wrap("type")
-
-  phoneme_layer <- network %>% summarize_pool %>%
-    filter(NodeClass == "PhonemeNode", activation != 0) %>%
-    mutate(Time = (t_start + t_end) / 2)
+  qplot(data = feature_layer, x = factor(t_start), y = activation, geom = "text", label = value) + facet_wrap("type")
+  qplot(data = feature_layer, x = factor(t_start), y = value, size = activation) + facet_wrap("type")
 
 
-  qplot(data = phoneme_layer, x = Time, y = activation, geom = "text", label = type) +
-    labs(title = title) + ylim(-.3, 1)
 
+p
   feature_layer
   network_tick <- network %>% vapply(function(x) x$tick, 1) %>% max
 
