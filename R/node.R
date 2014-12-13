@@ -12,10 +12,10 @@ Node <- R6Class("Node",
   public = list(
     # Structural fields
     tag = NA_character_,
-    edges_in = list(),
     timeslices = NA_integer_,
     t_start = NA_integer_,
     t_end = NA_integer_,
+    edges_in = list(),
 
     # Activation parameters
     act_min = -.3,
@@ -25,9 +25,10 @@ Node <- R6Class("Node",
 
     # Activation and clock values
     activation = numeric(0),
-    history = numeric(0),
     tick = 0,
     cache = 0,
+    # Pre-allocated room for history
+    history = numeric(150),
 
     # Constructor
     initialize = function(timeslices) {
@@ -41,31 +42,34 @@ Node <- R6Class("Node",
       self$activation <- self$act_rest
     },
 
-    attach_input = function(n) {
-      self$edges_in %<>% set_tail(n) %>% unique
-      invisible(self)
+    # Get current state of node [list]
+    describe = function() {
+      list(tag = self$tag,
+           t_start = self$t_start,
+           t_end = self$t_end,
+           activation = self$activation,
+           edges_in = length(self$edges_in))
     },
 
+    # Get activation history [data.frame]
+    remember =  function() {
+      # Ignore pre-allocated values, but include current state
+      values <- self$history %>% extract(seq_len(self$tick)) %>%
+        append(self$activation)
+      ticks <- seq(from = 0, to = self$tick)
+      df <- data_frame(tick = ticks, activation = values, tag = self$tag) %>%
+        select(tag, tick, activation)
+      df
+    },
+
+    # Get activation (when asked by another node) [numeric]
     send_activation = function() {
       # Activation is sent only if greater than 0.
       signal <- if (self$activation < 0) 0 else self$activation
       signal
     },
 
-    describe = function() {
-      list(tag = self$tag,
-           t_start = min(self$timeslices),
-           t_end = max(self$timeslices),
-           activation = self$activation,
-           edges_in = length(self$edges_in))
-    },
-
-    receive = function() {
-      self$cache <- self$edges_in %>% visit %>% sum
-      invisible(NULL)
-    },
-
-    # Rum and McCl activation function
+    # Rum and McCl activation function [numeric]
     compute_activation = function() {
       act <- self$activation
       dist_to_edge <- if (0 <= act) self$act_max - act else act - self$act_min
@@ -75,10 +79,31 @@ Node <- R6Class("Node",
       act + delta
     },
 
+    # Add an edge
+    attach_input = function(n) {
+      self$edges_in %<>% set_tail(n) %>% unique
+      invisible(self)
+    },
+
+    update_history = function() {
+      # Expand history vector if running out of space
+      slots_left <- length(self$history) - self$tick
+      if (slots_left < 5) self$history %<>% append(rep(0, 100))
+      self$history[self$tick] <- self$activation
+      invisible(self)
+    },
+
+    # Collect input from incoming edges
+    receive = function() {
+      self$cache <- self$edges_in %>% visit %>% sum
+      invisible(self)
+    },
+
     uptick = function() {
       self$tick %<>% add(1)
-      self$history %<>% append(self$activation)
+      self$update_history()
       self$activation <- self$compute_activation()
+      # "Spend" the collected input
       self$cache <- 0
       invisible(self)
     }
@@ -106,14 +131,14 @@ BiasNode <- R6Class("BiasNode",
 
     uptick = function() {
       self$tick %<>% add(1)
-      self$history %<>% append(self$activation)
+      self$update_history()
       self$activation <- self$compute_activation()
       invisible(self)
     }
   )
 )
 
-
+# S3-based accessor so we can have vectorized access to tags
 get_tag <- function(xs) UseMethod("get_tag")
 get_tag.Node <- function(xs) xs$tag
 get_tag.list <- function(xs) lapply(xs, get_tag) %>% unlist

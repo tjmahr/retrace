@@ -20,7 +20,10 @@ test_that("Upticking on a single Node", {
 
   expect_equal(test_node$tick, 3)
   expect_equal(test_node$activation, 1)
-  expect_equal(test_node$history, c(0, .5, 1))
+
+  history <- test_node$remember()
+  expect_equal(history$tick, 0:3)
+  expect_equal(history$activation, c(0, .5, 1, 1))
 })
 
 
@@ -42,8 +45,10 @@ test_that("Bias nodes are constant", {
 
   # Only values during timeslice are 1
   are_all <- function(xs, y) all(xs == y)
-  expect_true(are_all(bias$history[test_timeslice_index], 1))
-  expect_true(are_all(bias$history[-test_timeslice_index], 0))
+
+  history <- bias$remember()
+  expect_true(are_all(history[test_timeslice_index, "activation"], 1))
+  expect_true(are_all(history[-test_timeslice_index, "activation"], 0))
 
   # Input does nothing
   bias$cache <- 100
