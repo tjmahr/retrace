@@ -109,20 +109,6 @@ FeatureDetector <- function(type, time) {
 
 
 
-summarize_pool <- function(pool) {
-  # Wrapper for Node$describe method so we can vectorize it
-  describe <- function(node) {
-    # quickdf trick from http://adv-r.had.co.nz/Profiling.html#be-lazy
-    l <- node$describe()
-    l$NodeClass <- node %>% class %>% head(1)
-    class(l) <- "data.frame"
-    attr(l, "row.names") <- .set_row_names(length(l[[1]]))
-    l
-  }
-
-  # Make a data-frame summary of nodes in the pool
-  pool %>% lapply(describe) %>% rbind_all
-}
 
 
 

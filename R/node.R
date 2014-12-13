@@ -116,24 +116,15 @@ Node <- R6Class("Node",
 BiasNode <- R6Class("BiasNode",
   inherit = Node,
   public = list(
-    # Override fields from the Node class that the bias node cannot receive
-    # input and always returns a fixed input
-
-    # Refuse input connections
+    # Override fields from the Node class so that the input node cannot receive
+    # input
     attach_input = function(n) invisible(self),
     receive = function() invisible(self),
 
-    # Activate only when turned on
+    # Activate only when tick falls within timeslices (the input is active)
     compute_activation = function() {
       timely_tick <- is.element(self$tick, self$timeslices)
       if (timely_tick) self$act_max else self$act_rest
-    },
-
-    uptick = function() {
-      self$tick %<>% add(1)
-      self$update_history()
-      self$activation <- self$compute_activation()
-      invisible(self)
     }
   )
 )

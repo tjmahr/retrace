@@ -59,17 +59,28 @@
 
 
 
+
 # lexicon <- read.csv("inst/product_lex.csv", stringsAsFactors = FALSE)
 
 
 
 lexicon <- read.csv("inst/blood_lex.csv", stringsAsFactors = FALSE)
-X <- "inst/phon_1986_weird.csv" %>%
+X <- "data-raw/phon_1986_weird.csv" %>%
   read.csv(stringsAsFactors = FALSE) %>%
   filter(Phoneme == "bs") %>%
   mutate(Phoneme = "X")
 
-phoneme_set <- rbind(phonemes, X)
+
+
+reduced_set <- lexicon$Sounds %>% str_inventory %>% unique
+
+
+phonemes <- filter(phonemes, is.element(Phoneme, reduced_set))
+
+trace <- initialize_network(plug, lexicon)
+
+
+
 
 # Create ambiguous phoneme B
 # X <- get_phoneme_features("b") %>% mutate(Phoneme = "X")
@@ -109,13 +120,12 @@ plot_feature_input(plug)
 # trat <- create_input_matrix("trat")
 
 
-trace <- initialize_network(plug, lexicon)
 trace <- initialize_network(ambig, lexicon)
+trace <- initialize_network(plug, lexicon)
 
 
 n00 <- summarize_pool(trace) %>% mutate(tick = 0)
 n_history <- n00
-uptick(trace, 30)
 
 
 plot_phonemes_layer <- function(network) {
@@ -123,34 +133,78 @@ plot_phonemes_layer <- function(network) {
 }
 
 for (tick in seq(12, 120, by = 12)) {
-  trace <- update_network(trace, 12)
+  trace <- uptick(trace, 12)
   this_tick <- summarize_pool(trace) %>% mutate(tick = tick)
-
   n_history <- rbind(n_history, this_tick)
 }
 
 
+uptick(trace, 10)
 
 # n_history <- rbind_list(n00, n06, n12, n18, n24, n36, n48, n60)
 
 
-write.csv(n_history, file = "ganong.csv", row.names = FALSE)
+history <- get_history(trace)
 
+
+
+draw_phones_and_words <- function(history) {
+  phones_and_words <- history %>%
+    filter(NodeClass %in% c("PhonemeNode", "WordNode")) %>%
+    mutate(Time = (t_start + t_end) / 2) %>%
+    mutate(Class = factor(NodeClass, levels = c("WordNode", "PhonemeNode")))
+
+  # 5% percent of the y-axis
+  offset <- phones_and_words$activation %>% range %>% diff %>% divide_by(20)
+  phones_and_words %<>% filter(offset < abs(activation))
+
+  #   ignorable$width <- (ignorable$t_end - ignorable$t_start) + 1
+
+
+  phones <- filter(phones_and_words, NodeClass == "PhonemeNode")
+  # Recursively duplicate a data.frame
+  copy <- function(x, n) {
+    if (n == 0) x else rbind(x, copy(x, n - 1))
+  }
+  phones %<>% mutate(reps = t_end - t_start)
+
+  df <- data.frame()
+  for (row in seq_len(nrow(phones))) {
+    df %<>% rbind(copy(phones[row, ], phones[row, "reps"]))
+  }
+
+
+  df <- df %>% group_by(tag, tick) %>% mutate(Time = t_start:t_end)
+
+  qplot(data = phones, x = t_start, width = t_end - t_start, y = type, geom = "tile", fill = activation) + facet_wrap("tick") +
+    scale_fill_gradient2(low="blue", mid = "white", high="red", )
+
+  ggplot(data = phones_and_words) +
+    aes(xmin = t_start, xmax = t_end,
+        ymin = activation - offset, ymax = activation + offset,
+        alpha = abs(activation)) +
+#     geom_rect(color = "black", fill = NA) +
+    geom_text(aes(x = Time, y = activation, label = type)) +
+    facet_grid(Class ~ .)
+
+
+}
+
+ggplot(data = phones_and_words) +
+  aes(x = t_start, xend = t_end, y = activation, yend = activation) +
+  geom_segment() + facet_grid(Class ~ .)
+
+
+
+write.csv(n_history, file = "ganong.csv", row.names = FALSE)
 n_history <- summarize_pool(trace)
 
-phones_and_words <- n_history %>%
-  filter(NodeClass %in% c("PhonemeNode", "WordNode")) %>%
-  mutate(Time = (t_start + t_end) / 2) %>%
-  mutate(Class = factor(NodeClass, levels = c("WordNode", "PhonemeNode")))
 
 #
 # ggplot(data = n_history) +
 #   aes(x = t_start - .5, xend = t_end, y = activation, yend = activation) +
 #   geom_segment() + facet_grid(NodeClass ~ .)
 
-ggplot(data = phones_and_words) +
-  aes(x = t_start, xend = t_end, y = activation, yend = activation) +
-  geom_segment() + facet_grid(Class ~ .)
 
 
 offset <- phones_and_words$activation %>% range %>% diff %>% divide_by(20)
@@ -173,7 +227,7 @@ ggplot(data = ignorable) +
 #   p + geom_
 
 
-qplot(data = ignorable, alpha = activation, x = Time, y = activation, angle = 45, geom = "text", label = type) + facet_grid(Class ~ .)
+qplot(data = ignorable, alpha = activation, x = Time, y = activation, angle = 45, geom = "text", label = type) + facet_grid(Class ~ tick)
 
 
 

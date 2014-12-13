@@ -77,7 +77,6 @@ initialize_network <- function(feature_input, lexicon) {
 
   message("Creating ", feature_to_phoneme, " feature-to-phoneme paths")
 
-
   connect_feature_pool_to_phoneme <- function(phoneme_node) {
     compatible_features <- get_phoneme_features(phoneme_node$type) %>%
       filter(Weight != 0) %>%
@@ -118,7 +117,7 @@ initialize_network <- function(feature_input, lexicon) {
     message
 
   structure(c(bias_layer, feature_layer_flat, phoneme_layer, word_pool),
-            class = "Network")
+            class = c("Network", "list"))
 }
 
 #' @export
@@ -138,6 +137,51 @@ uptick.Network <- function(x, n_ticks = 1) {
 
   x
 }
+
+
+get_history <- function(pool) {
+  # Wrapper for Node$remember method so we can vectorize it
+  remember <- function(node) node$remember()
+
+  p <- pool %>% lapply(remember) %>% rbind_all
+
+#   if (compress) {
+#     # Remove nodes if their activation is constantly 0
+#     on_sometimes <- p %>% group_by(tag) %>%
+#       summarize(never_on = all(activation == 0)) %>%
+#       filter(!never_on) %>%
+#       extract2("tag")
+#     p %<>% filter(is.element(tag, on_sometimes))
+#   }
+
+  # Get timing, NodeClass, type information from summarize_pool
+  summary <- pool %>% summarize_pool %>%
+    select(-edges_in, -sounds, -activation)
+
+  p %>% inner_join(summary, by = c("tag"))
+}
+
+
+
+
+
+#' Get the current state of a pool of units
+#' @export
+summarize_pool <- function(pool) {
+  # Wrapper for Node$describe method so we can vectorize it
+  describe <- function(node) {
+    # quickdf trick from http://adv-r.had.co.nz/Profiling.html#be-lazy
+    l <- node$describe()
+    l$NodeClass <- node %>% class %>% head(1)
+    class(l) <- "data.frame"
+    attr(l, "row.names") <- .set_row_names(length(l[[1]]))
+    l
+  }
+
+  # Make a data-frame summary of nodes in the pool
+  pool %>% lapply(describe) %>% rbind_all
+}
+
 
 #' @export
 print.Network <- function(x, ...) {
