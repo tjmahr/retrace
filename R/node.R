@@ -1,11 +1,3 @@
-require("magrittr")
-require("digest")
-require("R6")
-require("assertthat")
-require("stringr")
-require("ggplot2")
-require("dplyr", warn.conflicts = FALSE)
-
 
 # act = 1
 # net = -1

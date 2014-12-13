@@ -78,25 +78,28 @@ plot_feature_input <- function(feature_matrix) {
   p
 }
 
-
+#' TODO set skirt-length as a parameter.
 fill_feature_matrix <- function(phoneme, phoneme_number, feat_matrix, phoneme_set) {
   start_time <- compute_phoneme_start(phoneme_number)
   # Rows to select
   phoneme_def <- phoneme_set %>%
-    filter(Phoneme == phoneme, !is.na(value))%>%
-    transmute(Row = paste0(Feature, value)) %>%
-    extract2("Row")
+    filter(Phoneme == phoneme, !is.na(Value), Weight != 0)%>%
+    mutate(Row = paste0(Feature, Value)) %>% arrange(Row)
 
-  # Columns to select
-  times <- seq(from = start_time, length.out = length(feature_gradient))
+  # Spread out the value of each feature peak. Stack these vectors on each other
+  # to form a matrix.
+  feature_spreads <- phoneme_def %$%
+    Map(create_feature_gradient, peak = Weight) %>%
+    lapply(matrix, nrow = 1, byrow = TRUE) %>% do.call(rbind, .) %>%
+    set_rownames(phoneme_def$Row)
 
-  # All of the values in column-major ordering
-  feature_values <- rep(feature_gradient, each = length(phoneme_def))
+  # Rows and columns to select
+  times <- seq(from = start_time, length.out = ncol(feature_spreads))
+  rows <- rownames(feat_matrix) %>% is.element(phoneme_def$Row)
 
   # Update subset of feature matrix
-  feat_matrix[phoneme_def, times] <- feature_values
+  feat_matrix[rows, times] <- feature_spreads
   feat_matrix
-
 }
 
 

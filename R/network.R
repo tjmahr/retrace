@@ -10,9 +10,11 @@
 #' @return a list of interconnected feature, phoneme, and word nodes
 #' @export
 initialize_network <- function(feature_input, lexicon) {
+  start_sys_time <- Sys.time()
+
   # Make sure lexicon includes silence
-  if (!is.element("SILENCE", lexicon$Word)) {
-    lexicon %<>% rbind(data.frame(Word = "SILENCE", Sounds = "-"))
+  if (!is.element("-", lexicon$Word)) {
+    lexicon %<>% rbind(data.frame(Word = "-", Sounds = "-"))
   }
 
   n_timeslices <- ncol(feature_input)
@@ -60,10 +62,10 @@ initialize_network <- function(feature_input, lexicon) {
       y_tag = edges_to_add$FeatureTag,
       weight = edges_to_add$Weight) %>% invisible
 
-
   phoneme_layer <- PhonemePool(n_timeslices)
 
-  features_per_phoneme <- phonemes %>% group_by(Phoneme) %>% tally
+  features_per_phoneme <- phonemes %>% group_by(Phoneme) %>%
+    filter(Weight != 0) %>% tally
 
   phoneme_layer_df <- phoneme_layer %>%
     summarize_pool %>%
@@ -75,8 +77,11 @@ initialize_network <- function(feature_input, lexicon) {
 
   message("Creating ", feature_to_phoneme, " feature-to-phoneme paths")
 
+
   connect_feature_pool_to_phoneme <- function(phoneme_node) {
-    compatible_features <- get_phoneme_features(phoneme_node$type)
+    compatible_features <- get_phoneme_features(phoneme_node$type) %>%
+      filter(Weight != 0) %>%
+      select(Phoneme, Feature, value = Value, -Weight)
     feature_pools <- feature_layer[phoneme_node$timeslices] %>%
       unlist(use.names = FALSE)
 
@@ -105,6 +110,12 @@ initialize_network <- function(feature_input, lexicon) {
       connect_phoneme_to_word(phoneme, word)
     }
   }
+
+
+  Sys.time() %>% subtract(start_sys_time) %>%
+    as.numeric(units = "secs") %>% round(1) %>%
+    paste0("Construction completed in ", ., " seconds") %>%
+    message
 
   structure(c(bias_layer, feature_layer_flat, phoneme_layer, word_pool),
             class = "Network")

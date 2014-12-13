@@ -28,7 +28,7 @@ extract_phoneme_definition <- function(start, end) {
   phoneme <- lines %>% get_phoneme
 
   feature_names <- c("Power", "Vocalic", "Diffuse", "Acute",
-                     "Consonantal", "Voicing", "Burst")
+                     "Consonantal", "Voiced", "Burst")
 
   phoneme_def <- lines %>% clean_cells %>%
     read.csv(text = ., header = FALSE, stringsAsFactors = FALSE) %>%

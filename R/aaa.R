@@ -1,3 +1,11 @@
+require("magrittr")
+require("digest")
+require("R6")
+require("assertthat")
+require("stringr")
+require("ggplot2")
+require("dplyr", warn.conflicts = FALSE)
+
 #' @export
 trace_params <- list(
   # bottom-up excitation
@@ -16,5 +24,15 @@ trace_params <- list(
   decay_word = .05
 )
 
+but_first <- . %>% tail(-1)
+
 # 5 up, peak activation, 5 down
-feature_gradient <- round(c(1:6, 5:1) / 6, 2)
+create_feature_gradient <- function(peak = 1, skirt = 5) {
+  assert_that(peak != 0)
+  # Add 1 to skirt to include the peak. Add another 1 because we exclude the
+  # first 0.
+  ramp <- seq(0, peak, length.out = skirt + 1 + 1) %>%
+    but_first %>% but_last %>% round(2)
+
+  c(ramp, peak, rev(ramp))
+}
