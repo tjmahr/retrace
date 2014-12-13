@@ -49,7 +49,7 @@ phoneme_inventory <- Map(extract_phoneme_definition, starts, ends) %>%
 
 weird_ones <- c("vow", "L", "dif", "as", "vs", "bs", "p/t")
 oddballs <- phoneme_inventory %>% filter(is.element(Phoneme, weird_ones)) %T>%
-  write.csv(file = "inst/phon_1986_weird.csv", row.names = FALSE)
+  write.csv(file = "data-raw/phon_1986_weird.csv", row.names = FALSE)
 
 phoneme_inventory %<>% filter(!is.element(Phoneme, weird_ones)) %T>%
-  write.csv(file = "inst/phon_1986.csv", row.names = FALSE)
+  write.csv(file = "data-raw/phon_1986.csv", row.names = FALSE)
