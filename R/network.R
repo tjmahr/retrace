@@ -124,10 +124,18 @@ initialize_network <- function(feature_input, lexicon) {
 #' @export
 uptick <- function(x, n_ticks = 1) UseMethod("uptick")
 uptick.Network <- function(x, n_ticks = 1) {
+  start_sys_time <- Sys.time()
+
   for(tick in seq_len(n_ticks)) {
     x %>% lapply(function(n) n$receive()) %>% invisible
     x %>% lapply(function(n) n$uptick()) %>% invisible
   }
+
+  Sys.time() %>% subtract(start_sys_time) %>%
+    as.numeric(units = "secs") %>% round(1) %>%
+    paste0(n_ticks, " network ticks completed in ", ., " seconds") %>%
+    message
+
   x
 }
 

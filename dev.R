@@ -62,18 +62,24 @@
 # lexicon <- read.csv("inst/product_lex.csv", stringsAsFactors = FALSE)
 
 
-lexicon <- read.csv("inst/blood_lex.csv", stringsAsFactors = FALSE)
 
-# Create ambiguous phoneme B
-X <- get_phoneme_features("b") %>% mutate(Phoneme = "X")
-X[which(X$Feature == "Voiced"), "value"] <- NA
-X[which(X$Feature == "Burst"), "value"] <- NA
+lexicon <- read.csv("inst/blood_lex.csv", stringsAsFactors = FALSE)
+X <- "inst/phon_1986_weird.csv" %>%
+  read.csv(stringsAsFactors = FALSE) %>%
+  filter(Phoneme == "bs") %>%
+  mutate(Phoneme = "X")
+
 phoneme_set <- rbind(phonemes, X)
 
-feat_mat <- tidyr::spread(phoneme_set, Phoneme, value)
+# Create ambiguous phoneme B
+# X <- get_phoneme_features("b") %>% mutate(Phoneme = "X")
+# X[which(X$Feature == "Voiced"), "value"] <- NA
+# X[which(X$Feature == "Burst"), "value"] <- NA
 
-feat_mat$X - feat_mat$b
-feat_mat$X - feat_mat$p
+# feat_mat <- tidyr::spread(phoneme_set, Phoneme, value)
+#
+# feat_mat$X - feat_mat$b
+# feat_mat$X - feat_mat$p
 
 # feature_list <- rep(0, length(feature_set)) %>%
 #   as.list %>%
@@ -103,14 +109,13 @@ plot_feature_input(plug)
 # trat <- create_input_matrix("trat")
 
 
-timestamp()
 trace <- initialize_network(plug, lexicon)
 trace <- initialize_network(ambig, lexicon)
 
 
 n00 <- summarize_pool(trace) %>% mutate(tick = 0)
 n_history <- n00
-uptick(trace, 15)
+uptick(trace, 30)
 
 
 plot_phonemes_layer <- function(network) {
@@ -123,7 +128,6 @@ for (tick in seq(12, 120, by = 12)) {
 
   n_history <- rbind(n_history, this_tick)
 }
-timestamp()
 
 
 
