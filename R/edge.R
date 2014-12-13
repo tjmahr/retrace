@@ -1,6 +1,6 @@
 #' Create a weighted connection
 #' @export
-Edge <- function(sender, receiver, weight) {
+Edge <- function(sender, weight) {
   structure(
     list(s_tag = sender$tag,
          sender = sender,
@@ -11,40 +11,6 @@ Edge <- function(sender, receiver, weight) {
 #' Simplified print
 print.Edge <- function(edge, ...) {
   edge %>% str(give.head = FALSE, ...)
-}
-
-
-#' Reciprocally connect two nodes
-#' @export
-connect <- function(x, y, weight) {
-  connect_onto(x, y, weight)
-  connect_onto(y, x, weight)
-}
-
-
-#' Create one-way connection between pair of nodes
-#' @export
-connect_onto <- function(x, y, weight) {
-  if (overlap(x, y)) {
-    x_onto_y <- Edge(x, y, weight)
-    y$attach_input(x_onto_y)
-  }
-  invisible(NULL)
-}
-
-#' Do two nodes overlap in time?
-#' @export
-overlap <- function(x, y) {
-  intersect(x$timeslices, y$timeslices) %>% is_not_empty
-}
-
-is_empty <- function(x) length(x) == 0
-is_not_empty <- Negate(is_empty)
-
-# Inhibition parameters are scaled by how much overlap there is between the
-# nodes
-determine_competition <- function(x, y) {
-  length(intersect(x$timeslices, y$timeslices)) / 3
 }
 
 
@@ -67,6 +33,49 @@ visit.list <- function(x, f = multiply_by) {
   lapply(x, visit, f) %>% unlist(use.names = FALSE)
 }
 
+
+
+
+
+#' Reciprocally connect two nodes
+#' @export
+connect <- function(x, y, weight) {
+  connect_onto(x, y, weight)
+  connect_onto(y, x, weight)
+}
+
+
+#' Create one-way connection between pair of nodes
+#'
+#' Two nodes can be connected (by a non-zero weight) if they overlap in time
+#'
+#' @param x the sending Node
+#' @param y the receiving Node
+#' @param weight weight of the connection.
+#' @return nothing; the receiving node is updated.
+#' @export
+connect_onto <- function(x, y, weight) {
+  if (overlap(x, y) & weight != 0) {
+    x_onto_y <- Edge(x, weight)
+    y$attach_input(x_onto_y)
+  }
+  invisible(NULL)
+}
+
+#' Do two nodes overlap in time?
+#' @export
+overlap <- function(x, y) {
+  intersect(x$timeslices, y$timeslices) %>% is_not_empty
+}
+
+is_empty <- function(x) length(x) == 0
+is_not_empty <- Negate(is_empty)
+
+# Inhibition parameters are scaled by how much overlap there is between the
+# nodes
+determine_competition <- function(x, y) {
+  length(intersect(x$timeslices, y$timeslices)) / 3
+}
 
 
 
