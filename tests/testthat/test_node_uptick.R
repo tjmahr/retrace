@@ -32,7 +32,7 @@ test_that("Bias nodes are constant", {
 
   # Default values
   test_timeslice <- 3:5
-  bias <- BiasNode$new(timeslice = test_timeslice)
+  bias <- InputNode$new(timeslice = test_timeslice)
   expect_equal(bias$activation, 0)
   expect_equal(bias$tick, 0)
 

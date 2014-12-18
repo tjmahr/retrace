@@ -112,8 +112,8 @@ Node <- R6Class("Node",
 
 
 
-
-BiasNode <- R6Class("BiasNode",
+#' @export
+InputNode <- R6Class("InputNode",
   inherit = Node,
   public = list(
     # Override fields from the Node class so that the input node cannot receive
@@ -134,6 +134,7 @@ get_tag <- function(xs) UseMethod("get_tag")
 get_tag.Node <- function(xs) xs$tag
 get_tag.list <- function(xs) lapply(xs, get_tag) %>% unlist
 
+#' @export
 FeatureNode <- R6Class("FeatureNode",
   inherit = Node,
   public = list(
@@ -154,6 +155,7 @@ FeatureNode <- R6Class("FeatureNode",
   )
 )
 
+#' @export
 PhonemeNode <- R6Class("PhonemeNode",
   inherit = Node,
   public = list(
@@ -172,7 +174,7 @@ PhonemeNode <- R6Class("PhonemeNode",
   )
 )
 
-
+#' @export
 WordNode <- R6Class("WordNode",
   inherit = Node,
   public = list(

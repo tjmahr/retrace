@@ -23,7 +23,7 @@ initialize_network <- function(feature_input, lexicon) {
     filter(Weight != 0)
 
   message("Creating ", n_timeslices, " input units")
-  bias_layer <- Map(BiasNode$new, timeslices = seq_len(n_timeslices))
+  bias_layer <- Map(InputNode$new, timeslices = seq_len(n_timeslices))
 
   message("Creating ", feature_count, " feature units")
   feature_layer <- Map(FeaturePool, time = seq_len(n_timeslices))
@@ -156,7 +156,7 @@ get_history <- function(pool) {
 
   # Get timing, NodeClass, type information from summarize_pool
   summary <- pool %>% summarize_pool %>%
-    select(-edges_in, -sounds, -activation)
+    select(-edges_in, -matches("sounds"), -activation)
 
   p %>% inner_join(summary, by = c("tag"))
 }
