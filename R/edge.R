@@ -23,12 +23,14 @@ print.Edge <- function(edge, ...) {
 #' @export
 visit <- function(x, f = multiply_by) UseMethod("visit")
 
+#' @export
 visit.Edge <- function(x, f = multiply_by) {
   weight <- x$weight
   x[["sender"]]$send_activation() %>% f(weight)
 }
 
 # Vectorized version: Visit a whole list of Edges.
+#' @export
 visit.list <- function(x, f = multiply_by) {
   lapply(x, visit, f) %>% unlist(use.names = FALSE)
 }

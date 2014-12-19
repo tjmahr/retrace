@@ -122,13 +122,12 @@ initialize_network <- function(feature_input, lexicon) {
 
 #' @export
 uptick <- function(x, n_ticks = 1) UseMethod("uptick")
+
+#' @export
 uptick.Network <- function(x, n_ticks = 1) {
   start_sys_time <- Sys.time()
 
-  for(tick in seq_len(n_ticks)) {
-    x %>% lapply(function(n) n$receive()) %>% invisible
-    x %>% lapply(function(n) n$uptick()) %>% invisible
-  }
+  x <- x %>% unclass %>% uptick(n_ticks)
 
   Sys.time() %>% subtract(start_sys_time) %>%
     as.numeric(units = "secs") %>% round(1) %>%
@@ -138,7 +137,24 @@ uptick.Network <- function(x, n_ticks = 1) {
   x
 }
 
+#' @export
+uptick.default <- function(x, n_ticks = 1) {
+  for(tick in seq_len(n_ticks)) {
+    x %>% lapply(function(n) n$receive()) %>% invisible
+    x %>% lapply(function(n) n$uptick()) %>% invisible
+  }
+  x
+}
 
+
+
+
+
+
+
+
+
+#' @export
 get_history <- function(pool) {
   # Wrapper for Node$remember method so we can vectorize it
   remember <- function(node) node$remember()
