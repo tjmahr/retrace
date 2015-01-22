@@ -1,7 +1,9 @@
 
-create_input_matrix <- function(word, phoneme_set = phonemes) {
+#' @export
+create_input_matrix <- function(word, phoneme_set = phonemes, silence = TRUE) {
   # The word is wrapped in silence first
-  sounds <- word %>% str_wrap_silence %>% str_tokenize
+  word <- if (silence) str_wrap_silence(word) else word
+  sounds <- str_tokenize(word)
   n_timeslices <- length(sounds) %>% compute_word_duration
 
   # Create an input matrix for each sound. Layer the individual sound matrices

@@ -23,7 +23,7 @@ PhonemePool <- function(n_timeslices) {
   n_phonemes <- length(alphabet)
 
   message("Creating ", count_phoneme_paths(n_phonemes, n_pools),
-          " phoneme-to-phoneme weights")
+          " phoneme-to-phoneme edges")
 
   ## Brute force solution: Enumerate all unordered phoneme pairs. Connect ones
   ## that overlap.

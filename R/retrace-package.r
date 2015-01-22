@@ -2,7 +2,7 @@
 #'
 #' @name retrace
 #' @docType package
-#' @import R6 dplyr magrittr assertthat digest
+#' @import R6 dplyr magrittr assertthat digest stringr ggplot2
 NULL
 
 #' 1986 Phoneme definitions

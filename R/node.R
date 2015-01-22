@@ -130,8 +130,11 @@ InputNode <- R6Class("InputNode",
 )
 
 # S3-based accessor so we can have vectorized access to tags
+#' @export
 get_tag <- function(xs) UseMethod("get_tag")
+#' @export
 get_tag.Node <- function(xs) xs$tag
+#' @export
 get_tag.list <- function(xs) lapply(xs, get_tag) %>% unlist
 
 #' @export

@@ -75,7 +75,7 @@ initialize_network <- function(feature_input, lexicon) {
            n_paths = n_features * n)
   feature_to_phoneme <- sum(phoneme_layer_df$n_paths)
 
-  message("Creating ", feature_to_phoneme, " feature-to-phoneme paths")
+  message("Creating ", feature_to_phoneme, " feature-to-phoneme edges")
 
   connect_feature_pool_to_phoneme <- function(phoneme_node) {
     compatible_features <- get_phoneme_features(phoneme_node$type) %>%
@@ -103,7 +103,7 @@ initialize_network <- function(feature_input, lexicon) {
 
   word_pool <- WordPool(n_timeslices, lexicon)
 
-  message("Checking ", length(phoneme_layer) * length(word_pool), " phoneme-word paths")
+  message("Checking ", length(phoneme_layer) * length(word_pool), " phoneme-word edges")
   for (phoneme in phoneme_layer) {
     for (word in word_pool) {
       connect_phoneme_to_word(phoneme, word)
