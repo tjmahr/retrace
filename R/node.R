@@ -38,7 +38,7 @@ Node <- R6Class("Node",
         self$t_end   <- max(timeslices)
       }
       # Randomized name to tell nodes apart
-      self$tag <- rnorm(1) %>% digest %>% substr(1, 6)
+      self$tag <- substr(digest(rnorm(1)), 1, 6)
       self$activation <- self$act_rest
     },
 
@@ -54,8 +54,7 @@ Node <- R6Class("Node",
     # Get activation history [data.frame]
     remember =  function() {
       # Ignore pre-allocated values, but include current state
-      values <- self$history %>% extract(seq_len(self$tick)) %>%
-        append(self$activation)
+      values <- c(self$history[seq_len(self$tick)], self$activation)
       ticks <- seq(from = 0, to = self$tick)
       df <- data_frame(tick = ticks, activation = values, tag = self$tag) %>%
         select(tag, tick, activation)
@@ -81,26 +80,26 @@ Node <- R6Class("Node",
 
     # Add an edge
     attach_input = function(n) {
-      self$edges_in %<>% set_tail(n) %>% unique
+      self$edges_in <- unique(set_tail(self$edges_in, n))
       invisible(self)
     },
 
     update_history = function() {
       # Expand history vector if running out of space
       slots_left <- length(self$history) - self$tick
-      if (slots_left < 5) self$history %<>% append(rep(0, 100))
+      if (slots_left < 5) self$history <- append(self$history, rep(0, 100))
       self$history[self$tick] <- self$activation
       invisible(self)
     },
 
     # Collect input from incoming edges
     receive = function() {
-      self$cache <- self$edges_in %>% visit %>% sum
+      self$cache <- sum(visit(self$edges_in))
       invisible(self)
     },
 
     uptick = function() {
-      self$tick %<>% add(1)
+      self$tick <- self$tick + 1L
       self$update_history()
       self$activation <- self$compute_activation()
       # "Spend" the collected input

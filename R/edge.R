@@ -67,7 +67,7 @@ connect_onto <- function(x, y, weight) {
 #' Do two nodes overlap in time?
 #' @export
 overlap <- function(x, y) {
-  intersect(x$timeslices, y$timeslices) %>% is_not_empty
+  intersect(x[["timeslices"]], y[["timeslices"]]) %>% is_not_empty
 }
 
 is_empty <- function(x) length(x) == 0

@@ -70,13 +70,13 @@ count_phoneme_paths <- function(n_phonemes, n_spans) {
 
 
 
+
 #' Create a pool of feature detectors
 FeaturePool <- function(time) {
-  features <- c("Power", "Vocalic", "Diffuse", "Acute",
-                "Consonantal", "Voiced", "Burst")
-  detector_pool <- Map(FeatureDetector, features, time) %>%
-    unlist(use.names = FALSE)
-  detector_pool
+  features_names <- c("Power", "Vocalic", "Diffuse", "Acute",
+                      "Consonantal", "Voiced", "Burst")
+  detector_pool <- Map(FeatureDetector, features_names, time)
+  unlist(detector_pool, use.names = FALSE)
 }
 
 #' Create a pool of mutually inhibitory nodes for all values in a single
@@ -88,7 +88,7 @@ FeatureDetector <- function(type, time) {
   # Create a pool of feature nodes
   feature_range <- 0:8
   n_features <- length(feature_range)
-  slices <- time %>% rep(n_features)
+  slices <- rep(time, n_features)
 
   node_set <- Map(FeatureNode$new, timeslices = slices, type = type,
                   value = feature_range) %>% unlist(use.names = FALSE)

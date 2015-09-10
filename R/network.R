@@ -29,7 +29,7 @@ initialize_network <- function(feature_input, lexicon) {
   feature_layer <- Map(FeaturePool, time = seq_len(n_timeslices))
   # feature_layer has a sublist for each timeslice. Flatten into a single list
   # to help with some operations later on.
-  feature_layer_flat <- feature_layer %>% unlist(use.names = FALSE)
+  feature_layer_flat <- unlist(feature_layer, use.names = FALSE)
 
   assert_that(
     length(bias_layer) == n_timeslices,

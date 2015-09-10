@@ -1,10 +1,10 @@
-require("magrittr")
 require("digest")
 require("R6")
 require("assertthat")
 require("stringr")
 require("ggplot2")
 require("dplyr", warn.conflicts = FALSE)
+require("magrittr")
 
 #' @export
 trace_params <- list(
