@@ -10,3 +10,5 @@ phoneme).
 
 **Limitations**: I didn't test any other phenomena, and it's too slow to be
 useful.
+
+My report on the package is in [vignettes/final_project](https://github.com/tjmahr/retrace/blob/master/vignettes/final_project.md).
