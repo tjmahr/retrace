@@ -2,7 +2,7 @@
 
 Tristan Mahr, December 18, 2014
 
-**Note**: I originally developed this R package and wrote this report as a final project in a psychology course on parallel distributed processing.
+**Note**: I originally developed this R package and wrote this report as a final project in a psychology course on parallel distributed processing. In its current form, circa Sept 2015, this implementation is too slow for serious modeling.
 
 Abstract
 --------
